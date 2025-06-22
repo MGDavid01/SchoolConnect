@@ -22,28 +22,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "../theme/theme";
 import BlogCard from "../components/BlogCard";
 import { NavigationProp } from "@react-navigation/native";
+import { BlogPost, Comment } from "../types/blog"; // ajusta la ruta si es necesario
 
-interface Comment {
-  id: string;
-  text: string;
-  author: string;
-  date: string;
-  likes: number;
-}
-
-interface BlogPost {
-  id: string;
-  title: string;
-  content: string;
-  author: string;
-  date: string;
-  category?: string;
-  imageUrl?: string;
-  likes: number;
-  dislikes: number;
-  comments: Comment[];
-  type: string;
-}
 
 interface BlogScreenProps {
   navigation: NavigationProp<any>;
@@ -65,7 +45,7 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
       comments: [
         {
           id: "1",
-          text: "¡Excelente inicio de ciclo!",
+          content: "¡Excelente inicio de ciclo!",
           author: "María García",
           date: "2024-03-15",
           likes: 3,
@@ -188,7 +168,7 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
 
     const newCommentObj: Comment = {
       id: Date.now().toString(),
-      text: newComment.trim(),
+      content: newComment.trim(),
       author: "Usuario Actual", // Esto debería venir del contexto de autenticación
       date: new Date().toISOString().split("T")[0],
       likes: 0,
@@ -234,6 +214,9 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
             onExpand={handleExpandPost}
             onReact={handleReaction}
             onComment={handleCommentPress}
+              onViewMore={() => {
+                // lógica que quieras para ver más (puede ser navegar a detalle)
+              }}
           />
         ))}
       </ScrollView>
@@ -267,7 +250,7 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
               {selectedPost?.comments.map((comment) => (
                 <View key={comment.id} style={styles.commentItem}>
                   <Text style={styles.commentAuthor}>{comment.author}</Text>
-                  <Text style={styles.commentText}>{comment.text}</Text>
+                  <Text style={styles.commentText}>{comment.content}</Text>
                   <View style={styles.commentMeta}>
                     <Text style={styles.commentDate}>{comment.date}</Text>
                     <TouchableOpacity style={styles.commentLike}>

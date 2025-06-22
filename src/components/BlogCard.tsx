@@ -2,25 +2,8 @@ import React from "react";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { Card, Text, IconButton } from "react-native-paper";
 import { COLORS } from "../theme/theme";
-
-interface Comment {
-  id: string;
-  author: string;
-  content: string;
-  date: string;
-}
-
-interface BlogPost {
-  id: string;
-  title: string;
-  author: string;
-  date: string;
-  content: string;
-  imageUrl?: string;
-  likes: number;
-  dislikes: number;
-  comments: Comment[];
-}
+// BlogCard.tsx
+import { BlogPost } from "../types/blog"; // ajusta la ruta si es necesario
 
 interface BlogCardProps {
   post: BlogPost;
@@ -29,6 +12,7 @@ interface BlogCardProps {
   onExpand: (postId: string) => void;
   onReact: (postId: string, reaction: "like" | "dislike") => void;
   onComment: (post: BlogPost) => void;
+  onViewMore: () => void;
 }
 
 const BlogCard = ({
