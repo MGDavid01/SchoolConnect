@@ -1,0 +1,6 @@
+Antes de inciar con el proyecto se debe de ejecutar la siguiente linea de codigo en una terminal extra en la misma
+direccion en donde este el proyecto:
+
+npx ts-node-dev --project tsconfig.server.json src/server.ts
+
+Este codigo ejecutará el backend para poder enviar datos del mongoDB al proyecto

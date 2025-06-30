@@ -12,13 +12,11 @@ import CalendarScreen from "../screens/CalendarScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import TabTransition from "../components/TabTransition";
 import { COLORS } from "../theme/theme";
-
 import { Scholarship } from '../navigation/types'; // Asegúrate de que la ruta sea correcta
-
-
-
-
 import { NewsStackParamList } from './types';
+
+import RoleListScreen from "../screens/RoleListScreen";
+import RolesNavigator from "./RolesNavigator";
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 // Tipos para los parámetros de las rutas
@@ -28,6 +26,7 @@ export type RootTabParamList = {
   Becas: undefined;
   Calendario: undefined;
   Perfil: undefined;
+  RolesTab: undefined;
 };
 
 export type BlogStackParamList = {
@@ -205,6 +204,19 @@ export const MainNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen
+        name="RolesTab"
+        children={(props) => (
+          <RolesNavigator {...props} active={activeTab === "RolesTab"} />
+        )}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="shield-account" size={size} color={color} />
+          ),
+          tabBarLabel: "Roles"
+        }}
+      />
+
+      <Tab.Screen
         name="Blog"
         children={(props) => (
           <BlogNavigator {...props} active={activeTab === "Blog"} />
@@ -248,6 +260,7 @@ export const MainNavigator: React.FC = () => {
           )
         }}
       />
+      
     </Tab.Navigator>
   );
 };
