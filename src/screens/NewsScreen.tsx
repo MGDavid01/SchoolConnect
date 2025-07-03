@@ -193,8 +193,8 @@ const NewsScreen: React.FC<NewsScreenProps> = ({ navigation }) => {
                 content={post.content}
                 date={post.date}
                 author={post.author}
-                category={post.category}
-                imageUrl={post.imageUrl || (post.category ? [post.category] : undefined)}
+                category={post.category as Category}
+                imageUrl={post.imageUrl || defaultImages[post.category as Category]}
                 onViewMore={() => handlePostPress(post)}
 
               />

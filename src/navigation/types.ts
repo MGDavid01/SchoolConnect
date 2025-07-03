@@ -54,6 +54,12 @@ export type RootStackParamList = {
   CreatePost: undefined;
   News: undefined;
   NewsDetail: { post: PostData }; 
+  Auth: undefined;
+  MainTabs: undefined;
+};
+
+export type AuthStackParamList = {
+  Login: undefined;
 };
 
 export type NewsStackParamList = {

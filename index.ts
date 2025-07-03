@@ -1,5 +1,4 @@
 import { registerRootComponent } from 'expo';
-import { connectDB } from "./config/database";
 
 
 import App from './App';

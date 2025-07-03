@@ -4,3 +4,9 @@ direccion en donde este el proyecto:
 npx ts-node-dev --project tsconfig.server.json src/server.ts
 
 Este codigo ejecutará el backend para poder enviar datos del mongoDB al proyecto
+
+------------------------------------
+
+Para que funcione el backend se debe de ir al archivo constants/api.ts, una vez dentro del archivo cambiar la ip por la 
+del dispositivo que se este usando, de esta manera se podra ejecutar el comando de arriba y tener la conexion con
+mongoDB

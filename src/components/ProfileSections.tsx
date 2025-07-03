@@ -2,7 +2,7 @@ import React from "react"
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native"
 import { COLORS } from "../theme/theme"
 
-type SectionKey = "publicaciones" | "guardados"
+type SectionKey = "publicaciones" | "comentarios" | "guardados" | "likes";
 
 type ProfileSectionsProps = {
   activeSection: SectionKey
@@ -14,9 +14,11 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({
   onSectionChange
 }) => {
   const sections: { key: SectionKey; label: string }[] = [
-    { key: "publicaciones", label: "Publicaciones" },
-    { key: "guardados", label: "Guardados" }
-  ]
+  { key: "publicaciones", label: "Publicaciones" },
+  { key: "comentarios", label: "Comentarios" },
+  { key: "guardados", label: "Guardados" },
+  { key: "likes", label: "Likes" }
+];
 
   return (
     <View style={styles.sectionsContainer}>

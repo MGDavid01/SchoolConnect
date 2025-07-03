@@ -8,7 +8,7 @@ const RoleListScreen = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-  fetch(`${API_URL}/roles`)
+  fetch(`${API_URL}/api/roles`)
     .then(res => {
       console.log("Status", res.status);
       return res.text();  // Leer como texto para ver qué es realmente

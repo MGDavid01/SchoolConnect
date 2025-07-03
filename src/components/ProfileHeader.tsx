@@ -4,8 +4,7 @@ import { COLORS } from "../theme/theme"
 
 // 1. Definir el tipo de `user`
 type User = {
-  firstName?: string
-  lastName?: string
+  nombre?: string
 }
 
 // 2. Definir el tipo de las props
@@ -21,7 +20,7 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ user, onDetailsPress }) =
       <View style={styles.profileImage} />
       <View style={styles.profileInfo}>
         <Text style={styles.userName}>
-          {`${user?.firstName || ""} ${user?.lastName || ""}`}
+          {`${user?.nombre || ""} `}
         </Text>
         <TouchableOpacity style={styles.detailsButton} onPress={onDetailsPress}>
           <Text style={styles.detailsButtonText}>Ver detalles</Text>

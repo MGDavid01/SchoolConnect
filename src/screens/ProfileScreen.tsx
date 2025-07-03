@@ -1,33 +1,50 @@
-import React, { useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import React, { useState, useContext } from "react";
+import { ScrollView, StyleSheet, View, Text, ActivityIndicator, Alert, Button } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "../theme/theme";
 import ProfileHeader from "../components/ProfileHeader";
 import UserDetailsModal from "../components/UserDetailsModal";
 import ProfileSections from "../components/ProfileSections";
+import { AuthContext } from "../contexts/AuthContext";
+import { useNavigation } from "@react-navigation/native";
 
-type ProfileSection = "publicaciones" | "comentarios" | "guardados" | "likes"; // Ajusta según tus secciones reales
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { AuthStackParamList } from "../navigation/types";
 
-interface User {
-  firstName: string;
-  lastName: string;
-  email: string;
-  studentId: string;
-  birthDate: string;
-}
+type ProfileSection = "publicaciones" | "comentarios" | "guardados" | "likes";
+
 
 const ProfileScreen: React.FC = () => {
+  const authContext = useContext(AuthContext);
+
+  if (!authContext) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text>Error al cargar la información del usuario</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // Obtenemos user y logout del contexto
+  const { user, logout } = authContext;
+  console.log("Usuario actual en App.tsx:", user);
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
+
+
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [activeSection, setActiveSection] = useState<ProfileSection>("publicaciones");
 
-  // Mock user data
-  const user: User = {
-    firstName: "Juan",
-    lastName: "Pérez García",
-    email: "juan.perez@example.com",
-    studentId: "A01234567",
-    birthDate: "15/05/1995"
-  };
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={{ textAlign: "center", marginTop: 10 }}>Cargando perfil...</Text>
+      </SafeAreaView>
+    );
+  }
+  
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
 
   const handleDetailsPress = (): void => {
     setModalVisible(true);
@@ -41,27 +58,52 @@ const ProfileScreen: React.FC = () => {
     setActiveSection(section);
   };
 
+  const handleLogout = () => {
+    setLogoutModalVisible(true);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView style={styles.scrollContainer}>
         <View style={styles.headerSection}>
-          <ProfileHeader 
-            user={user}
-            onDetailsPress={handleDetailsPress}
-          />
+          <ProfileHeader user={user} onDetailsPress={handleDetailsPress} />
         </View>
 
-        <ProfileSections
-          activeSection={activeSection}
-          onSectionChange={handleSectionChange}
-        />
+        <ProfileSections activeSection={activeSection} onSectionChange={handleSectionChange} />
+
+        {/* Botón de cerrar sesión */}
+        <View style={styles.logoutButtonContainer}>
+        <Button title="Cerrar sesión" color={COLORS.primary} onPress={handleLogout} />
+
+        </View>
       </ScrollView>
 
-      <UserDetailsModal
-        visible={modalVisible}
-        onClose={handleModalClose}
-        user={user}
-      />
+      <UserDetailsModal visible={modalVisible} onClose={handleModalClose} user={user} />
+
+      {logoutModalVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>¿Cerrar sesión?</Text>
+            <Text style={styles.modalText}>¿Estás seguro que deseas cerrar sesión?</Text>
+
+            <View style={styles.modalButtons}>
+              <Button title="Cancelar" onPress={() => setLogoutModalVisible(false)} />
+              <Button
+                title="Cerrar sesión"
+                color={COLORS.primary}
+                onPress={async () => {
+                  setLogoutModalVisible(false);
+                  await logout();
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: "Login" }],
+                  });
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -79,6 +121,41 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 0,
   },
+  logoutButtonContainer: {
+    marginTop: 20,
+    marginHorizontal: 20,
+  },
+  modalOverlay: {
+  position: "absolute",
+  top: 0, left: 0, right: 0, bottom: 0,
+  backgroundColor: "rgba(0,0,0,0.5)",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 1000
+},
+modalContent: {
+  width: "80%",
+  padding: 20,
+  backgroundColor: "white",
+  borderRadius: 10,
+  elevation: 10
+},
+modalTitle: {
+  fontSize: 18,
+  fontWeight: "bold",
+  marginBottom: 10,
+  textAlign: "center"
+},
+modalText: {
+  fontSize: 16,
+  marginBottom: 20,
+  textAlign: "center"
+},
+modalButtons: {
+  flexDirection: "row",
+  justifyContent: "space-between"
+}
+
 });
 
 export default ProfileScreen;
