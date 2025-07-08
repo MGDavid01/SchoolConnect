@@ -25,13 +25,8 @@ const ProfileScreen: React.FC = () => {
     );
   }
 
-  // Obtenemos user y logout del contexto
   const { user, logout } = authContext;
-  console.log("Usuario actual en App.tsx:", user);
-  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
-
-
-  const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [modalVisible, setModalVisible] = useState(false);
   const [activeSection, setActiveSection] = useState<ProfileSection>("publicaciones");
 
   if (!user) {
@@ -42,68 +37,34 @@ const ProfileScreen: React.FC = () => {
       </SafeAreaView>
     );
   }
-  
-  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
-
-  const handleDetailsPress = (): void => {
-    setModalVisible(true);
-  };
-
-  const handleModalClose = (): void => {
-    setModalVisible(false);
-  };
-
-  const handleSectionChange = (section: ProfileSection): void => {
-    setActiveSection(section);
-  };
-
-  const handleLogout = () => {
-    setLogoutModalVisible(true);
-  };
+  const handleDetailsPress = () => setModalVisible(true);
+  const handleModalClose = () => setModalVisible(false);
+  const handleSectionChange = (section: ProfileSection) => setActiveSection(section);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView style={styles.scrollContainer}>
         <View style={styles.headerSection}>
-          <ProfileHeader user={user} onDetailsPress={handleDetailsPress} />
+          <ProfileHeader
+            user={user}
+            onDetailsPress={handleDetailsPress}
+            onLogoutPress={logout}
+          />
         </View>
 
-        <ProfileSections activeSection={activeSection} onSectionChange={handleSectionChange} />
-
-        {/* Botón de cerrar sesión */}
-        <View style={styles.logoutButtonContainer}>
-        <Button title="Cerrar sesión" color={COLORS.primary} onPress={handleLogout} />
-
-        </View>
+        <ProfileSections
+          activeSection={activeSection}
+          onSectionChange={handleSectionChange}
+        />
       </ScrollView>
 
-      <UserDetailsModal visible={modalVisible} onClose={handleModalClose} user={user} />
-
-      {logoutModalVisible && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>¿Cerrar sesión?</Text>
-            <Text style={styles.modalText}>¿Estás seguro que deseas cerrar sesión?</Text>
-
-            <View style={styles.modalButtons}>
-              <Button title="Cancelar" onPress={() => setLogoutModalVisible(false)} />
-              <Button
-                title="Cerrar sesión"
-                color={COLORS.primary}
-                onPress={async () => {
-                  setLogoutModalVisible(false);
-                  await logout();
-                  navigation.reset({
-                    index: 0,
-                    routes: [{ name: "Login" }],
-                  });
-                }}
-              />
-            </View>
-          </View>
-        </View>
-      )}
+      <UserDetailsModal
+        visible={modalVisible}
+        onClose={handleModalClose}
+        user={user}
+        onLogoutPress={logout}
+      />
     </SafeAreaView>
   );
 };

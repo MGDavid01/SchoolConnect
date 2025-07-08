@@ -73,6 +73,18 @@ export type ScholarshipStackParamList = {
   ScholarshipDetail: { scholarship: Scholarship };
 };
 
+export type User = {
+  _id: string;
+  nombre: string;
+  apellidoPaterno: string;
+  apellidoMaterno: string;
+  rol: "alumno" | "docente" | "personal" | "administrador";
+  grupoID?: string;
+  activo: boolean;
+  fechaRegistro: Date;
+  fechaNacimiento: Date;
+};
+
 
 
 

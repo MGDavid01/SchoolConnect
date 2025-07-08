@@ -25,21 +25,23 @@ const LoginScreen = () => {
   const [showUsers, setShowUsers] = useState(false);
 
   const fetchUsers = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${API_URL}/api/auth/debug/users`);
-      const data = await response.json();
-      if (response.ok) {
-        setUsers(data);
-      } else {
-        Alert.alert("Error", data.message || "No se pudieron obtener los usuarios");
-      }
-    } catch (error) {
-      Alert.alert("Error", "Error al conectar con el servidor");
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    const response = await fetch(`${API_URL}/api/auth/debug/users`);
+    const result = await response.json(); // ← Ahora es un objeto con {success, data}
+    
+    if (response.ok && result.success) {
+      setUsers(result.data || []); // ← Usa result.data y fallback a array vacío
+    } else {
+      Alert.alert("Error", result.error || "Error en la respuesta");
     }
-  };
+  } catch (error) {
+    Alert.alert("Error", "Error de conexión");
+    setUsers([]); // ← Asegura que siempre sea array
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Alternar visualización de usuarios
   const toggleShowUsers = () => {
@@ -157,18 +159,25 @@ const LoginScreen = () => {
       )}
 
       {showUsers && (
-        <ScrollView style={styles.usersContainer}>
-          <Text style={styles.usersTitle}>Usuarios en la base de datos:</Text>
-          {users.map((user, index) => (
-            <View key={index} style={styles.userCard}>
-              <Text>Email: {user._id}</Text>
-              <Text>Nombre: {user.nombre}</Text>
-              <Text>Rol: {user.rol}</Text>
-              <Text>Activo: {user.activo ? "Sí" : "No"}</Text>
-            </View>
-          ))}
-        </ScrollView>
-      )}
+  <ScrollView style={styles.usersContainer}>
+    <Text style={styles.usersTitle}>
+      Usuarios en la base de datos ({Array.isArray(users) ? users.length : 0})
+    </Text>
+    
+    {/* Validación adicional */}
+    {Array.isArray(users) ? (
+      users.map((user, index) => (
+        <View key={`user-${index}`} style={styles.userCard}>
+          <Text>Email: {user._id}</Text>
+          <Text>Nombre: {user.nombre}</Text>
+          <Text>Rol: {user.rol}</Text>
+        </View>
+      ))
+    ) : (
+      <Text>Formato de datos inesperado</Text>
+    )}
+  </ScrollView>
+)}
     </View>
   );
 };

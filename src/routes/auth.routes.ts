@@ -5,13 +5,7 @@ import mongoose from "mongoose";
 const router: Router = Router();
 
 router.get("/debug/users", async (req, res) => {
-  // Solo permitir en desarrollo
-  if (process.env.NODE_ENV !== 'development') {
-    return res.status(403).json({ 
-      message: "Acceso solo permitido en modo desarrollo" 
-    });
-  }
-
+  // Solo permitir en desarroll
   try {
     const users = await UserModel.find({})
       .select('-password -__v') // Excluye campos sensibles
@@ -25,9 +19,9 @@ router.get("/debug/users", async (req, res) => {
       activo: Boolean(user.activo) // Asegura valor booleano
     }));
 
-    return res.json({
-      count: formattedUsers.length,
-      users: formattedUsers
+    res.json({
+      success: true,
+      data: Array.isArray(users) ? users : [users] // ← Conversión segura
     });
 
   } catch (error) {

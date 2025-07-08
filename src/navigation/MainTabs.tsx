@@ -211,18 +211,6 @@ const { user } = authContext;
           )
         }}
       />
-      <Tab.Screen
-        name="RolesTab"
-        children={(props) => (
-          <RolesNavigator {...props} active={activeTab === "RolesTab"} />
-        )}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="shield-account" size={size} color={color} />
-          ),
-          tabBarLabel: "Roles"
-        }}
-      />
 
       <Tab.Screen
         name="Blog"

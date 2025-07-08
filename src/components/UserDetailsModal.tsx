@@ -2,19 +2,24 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
 import { COLORS } from "../theme/theme";
 
+
 interface User {
   _id: string;
   nombre: string;
-  correo: string;
+  apellidoPaterno: string;
+  apellidoMaterno: string;
   rol: string;
+  grupoID?: string;
   activo: boolean;
   fechaRegistro: Date;
+  fechaNacimiento: Date;
 }
 
 interface UserDetailsModalProps {
   visible: boolean;
   onClose: () => void;
   user?: User; // puede ser undefined mientras carga
+  onLogoutPress: () => void;
 }
 
 const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ visible, onClose, user }) => {
@@ -35,8 +40,13 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ visible, onClose, u
           </View>
 
           <View style={styles.modalRow}>
-            <Text style={styles.modalLabel}>Correo:</Text>
-            <Text style={styles.modalValue}>{user?.correo || "N/A"}</Text>
+            <Text style={styles.modalLabel}>Apellido Paterno:</Text>
+            <Text style={styles.modalValue}>{user?.apellidoPaterno || "N/A"}</Text>
+          </View>
+
+          <View style={styles.modalRow}>
+            <Text style={styles.modalLabel}>Apellido Materno:</Text>
+            <Text style={styles.modalValue}>{user?.apellidoMaterno || "N/A"}</Text>
           </View>
 
           <View style={styles.modalRow}>
@@ -45,8 +55,8 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ visible, onClose, u
           </View>
 
           <View style={styles.modalRow}>
-            <Text style={styles.modalLabel}>Activo:</Text>
-            <Text style={styles.modalValue}>{user?.activo ? "Sí" : "No"}</Text>
+            <Text style={styles.modalLabel}>Grupo:</Text>
+            <Text style={styles.modalValue}>{user?.grupoID || "N/A"}</Text>
           </View>
 
           <View style={styles.modalRow}>
