@@ -1,3 +1,4 @@
+// src/server.ts
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -8,29 +9,30 @@ import authRoutes from "./routes/auth.routes";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 // 1. Conectar a MongoDB
 connectDB();
 
 // 2. Middlewares
-app.use(cors({ origin: "*" })); // Solo para desarrollo
-app.use(express.json()); // Para interpretar JSON en peticiones
+app.use(cors({ origin: "*" }));
+app.use(express.json());
 
-// 3. Rutas
-app.use("/api/roles", roleRoutes);    // Ej: GET /api/roles
-app.use("/api/auth", authRoutes);     // Ej: POST /api/auth/login
-
-app.get("/", (req, res) => {
-  res.send("API funcionando ✅");
-});
-
+// 3. Middleware para log de todas las peticiones
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// 4. Inicio del servidor
+// 4. Rutas
+app.use("/api/roles", roleRoutes);    // GET /api/roles
+app.use("/api/auth", authRoutes);     // POST /api/auth/login
+
+app.get("/", (req, res) => {
+  res.send("API funcionando ✅");
+});
+
+// 5. Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Backend corriendo en http://localhost:${PORT}`);
 });

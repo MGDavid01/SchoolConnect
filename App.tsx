@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./src/contexts/AuthContext"; // Importa u
 import { ActivityIndicator, View } from "react-native";
 import MainNavigator from "./src/navigation/MainNavigator";
 
+
 const App = () => {
   return (
     <PaperProvider>

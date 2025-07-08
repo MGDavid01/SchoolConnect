@@ -7,7 +7,7 @@ dotenv.config();
 
 export const connectDB = async () => {
   try {
-    mongoose.connect(process.env.MONGO_URI as string);
+    await mongoose.connect(process.env.MONGO_URI as string);
     console.log("🟢 Conectado a MongoDB Atlas");
     console.log("🔗 URI:", process.env.MONGO_URI);
   } catch (error) {
@@ -15,3 +15,4 @@ export const connectDB = async () => {
     process.exit(1);
   }
 };
+

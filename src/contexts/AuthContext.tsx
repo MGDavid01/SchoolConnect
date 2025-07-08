@@ -4,11 +4,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 type UserType = {
   _id: string;
   nombre: string;
-  correo: string;
-  rol: string;
+  apellidoPaterno: string;
+  apellidoMaterno: string;
+  rol: "alumno" | "docente" | "personal" | "administrador";
+  grupoID?: string;
   activo: boolean;
-  fechaRegistro: Date;
+  fechaRegistro: Date; 
+  fechaNacimiento: Date;
 } | null;
+
 
 type AuthContextType = {
   user: UserType;
@@ -25,6 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const login = async (userData: Exclude<UserType, null>) => {
+    console.log("Guardando en AsyncStorage:", userData);
     try {
       await AsyncStorage.setItem("user", JSON.stringify(userData));
       setUser(userData);
@@ -45,20 +50,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const storedUser = await AsyncStorage.getItem("user");
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
-        }
-      } catch (error) {
-        console.error("Error cargando usuario desde AsyncStorage", error);
-      } finally {
-        setIsLoading(false);
+const loadUser = async () => {
+  try {
+    const storedUser = await AsyncStorage.getItem("user");
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      if (parsedUser && parsedUser._id && parsedUser.rol) {
+        setUser(parsedUser);
+      } else {
+        setUser(null); // datos inválidos
       }
-    };
-
+    }
+  } catch (error) {
+    console.error("Error cargando usuario desde AsyncStorage", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
     loadUser();
   }, []);
 
