@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { View, TextInput, Button, Text, StyleSheet, Alert, ActivityIndicator, ScrollView } from "react-native";
+import { View, TextInput, Button, Text, StyleSheet, Alert, ActivityIndicator, ScrollView, TouchableOpacity, Image } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../constants/api";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigation } from "@react-navigation/native"; // ✅
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { RootTabParamList } from "../navigation/MainTabs";
-
+import { MaterialIcons } from '@expo/vector-icons';
 
 
 const LoginScreen = () => {
@@ -20,7 +20,7 @@ const LoginScreen = () => {
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [showUsers, setShowUsers] = useState(false);
 
@@ -123,38 +123,60 @@ const LoginScreen = () => {
 
   return (
     <View style={styles.container}>
+
+      <Image 
+        source={require('../../assets/logo_sc.jpg')}  // o la ruta de tu imagen
+        style={styles.logo}
+      />
+
       <Text style={styles.title}>Iniciar Sesión</Text>
+      <Text style={styles.subtitle}>Ingrese su email y contraseña</Text>
       
       <TextInput
         placeholder="Correo"
+        placeholderTextColor="#4A4A4A"
         style={styles.input}
         value={correo}
         onChangeText={setCorreo}
       />
+
+    <View style={styles.inputContainer}>
+  <TextInput
+    placeholder="Contraseña"
+    placeholderTextColor="#4A4A4A"
+    style={styles.inputField}
+    value={password}
+    onChangeText={setPassword}
+    secureTextEntry={!showPassword}
+  />
+  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+    <MaterialIcons
+      name={showPassword ? 'visibility' : 'visibility-off'}
+      size={24}
+      color="#4A4A4A"
+    />
+  </TouchableOpacity>
+</View>
+
+
       
-      <TextInput
-        placeholder="Contraseña"
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
+     {loading ? (
+        <ActivityIndicator size="large" color="#7A1625" />
       ) : (
         <>
-          <Button title="Ingresar" onPress={handleLogin} />
-          <Button 
-            title="Probar conexión" 
-            onPress={testAPIConnection} 
-            color="#888"
-          />
-          <Button 
-            title={showUsers ? "Ocultar usuarios" : "Mostrar usuarios"} 
-            onPress={toggleShowUsers} 
-            color="#666"
-          />
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+            <Text style={styles.loginButtonText}>Ingresar</Text>
+          </TouchableOpacity>
+
+          {/* <TouchableOpacity style={styles.secondaryButton} onPress={testAPIConnection}>
+            <Text style={styles.secondaryButtonText}>Probar conexión</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.secondaryButton} onPress={toggleShowUsers}>
+            <Text style={styles.secondaryButtonText}>
+              {showUsers ? 'Ocultar usuarios' : 'Mostrar usuarios'}
+            </Text>
+          </TouchableOpacity> */}
         </>
       )}
 
@@ -187,29 +209,109 @@ const LoginScreen = () => {
 export default LoginScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 20 },
-  title: { fontSize: 24, marginBottom: 20, textAlign: "center" },
+  container: {
+    flex: 1,
+    backgroundColor: '#f7f7f7',
+    justifyContent: 'center',
+    padding: 25,
+  },
+    logo: {
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#7A1625',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+    subtitle: {
+    fontSize: 18,
+    color: '#000',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
   input: {
-    borderBottomWidth: 1,
+    backgroundColor: '#EDEDED',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     marginBottom: 15,
-    padding: 8,
+    fontSize: 16,
+    color: '#000000',
+  },
+  loginButton: {
+    backgroundColor: '#7A1625',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  loginButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  secondaryButton: {
+    backgroundColor: '#B78E4A',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  secondaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
   usersContainer: {
-    marginTop: 20,
+    marginTop: 25,
     maxHeight: 200,
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 5,
+    borderRadius: 8,
     padding: 10,
+    backgroundColor: '#EDEDED',
   },
   usersTitle: {
     fontWeight: 'bold',
+    color: '#7A1625',
     marginBottom: 10,
+    fontSize: 16,
   },
   userCard: {
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingVertical: 8,
-    marginBottom: 5,
+    borderBottomColor: '#ccc',
+    paddingVertical: 6,
+    marginBottom: 4,
   },
+  userText: {
+    color: '#4A4A4A',
+    fontSize: 14,
+  },
+
+inputContainer: {
+  backgroundColor: '#E6F0FF',
+  borderRadius: 8,
+  paddingHorizontal: 15,
+  paddingVertical: 10,
+  marginBottom: 15,
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+
+inputField: {
+  flex: 1,
+  fontSize: 16,
+  color: '#000000',
+},
+
+iconContainer: {
+  marginLeft: 10,
+},
+
 });
