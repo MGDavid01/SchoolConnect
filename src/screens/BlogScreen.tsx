@@ -24,62 +24,59 @@ import BlogCard from "../components/BlogCard";
 import { NavigationProp } from "@react-navigation/native";
 import { BlogPost, Comment } from "../types/blog"; // ajusta la ruta si es necesario
 
+import { API_URL } from "../constants/api";
+import { useEffect } from "react";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 
 interface BlogScreenProps {
   navigation: NavigationProp<any>;
 }
 
 const BlogScreen = ({ navigation }: BlogScreenProps) => {
-  const [posts, setPosts] = useState<BlogPost[]>([
-    {
-      id: "1",
-      title: "Bienvenidos al nuevo ciclo escolar",
-      content:
-        "Nos complace dar la bienvenida a todos los estudiantes al nuevo ciclo escolar. Este año tenemos preparadas muchas actividades y eventos emocionantes...",
-      author: "Director Académico",
-      date: "2024-03-15",
-      category: "Anuncios",
-      imageUrl: "https://example.com/welcome.jpg",
-      likes: 15,
-      dislikes: 0,
-      comments: [
-        {
-          id: "1",
-          content: "¡Excelente inicio de ciclo!",
-          author: "María García",
-          date: "2024-03-15",
-          likes: 3,
-        },
-      ],
-      type: "blog",
-    },
-    {
-      id: "2",
-      title: "Guía de Supervivencia para el Primer Cuatrimestre",
-      content:
-        "Como estudiante de segundo año, quiero compartir algunos consejos útiles para los nuevos estudiantes que están comenzando su viaje en la UTT. Desde la gestión del tiempo hasta los mejores lugares para estudiar en el campus...",
-      date: "2023-12-15",
-      author: "Ana López",
-      category: "Académico",
-      type: "blog",
-      likes: 0,
-      dislikes: 0,
-      comments: [],
-    },
-    {
-      id: "3",
-      title: "Actividades Extracurriculares en la UTT",
-      content:
-        "Descubre todas las actividades que puedes realizar fuera del aula. Desde clubes deportivos hasta grupos culturales, hay algo para todos...",
-      date: "2023-12-12",
-      author: "María González",
-      category: "General",
-      type: "blog",
-      likes: 0,
-      dislikes: 0,
-      comments: [],
-    },
-  ]);
+  const [posts, setPosts] = useState<BlogPost[]>([  ]);
+
+  useEffect(() => {
+  const fetchPosts = async () => {
+    try {
+      const publicacionesRes = await axios.get(`${API_URL}/api/publicaciones`);
+      const publicaciones = publicacionesRes.data;
+
+      const conteoRes = await axios.get(`${API_URL}/api/reacciones/conteo`);
+      const conteos = conteoRes.data;
+
+      const usuarioID = await AsyncStorage.getItem("correo");
+      let reacciones: Record<string, "like" | "dislike"> = {};
+      if (usuarioID) {
+        const reaccionRes = await axios.get(`${API_URL}/api/reacciones/${usuarioID}`);
+        reacciones = reaccionRes.data;
+        setUserReactions(reacciones);
+      }
+
+      const parsedPosts: BlogPost[] = publicaciones.map((item: any) => ({
+        id: item._id,
+        title: item.tipo.charAt(0).toUpperCase() + item.tipo.slice(1),
+        content: item.contenido,
+        author: item.autorNombre,
+        date: new Date(item.fecha).toISOString().split("T")[0],
+        category: item.visibilidad === "todos" ? "Público" : "Grupo",
+        imageUrl: item.imagenURL || "",
+        likes: conteos[item._id]?.like || 0,
+        dislikes: conteos[item._id]?.dislike || 0,
+        comments: [],
+        type: "blog",
+      }));
+
+      setPosts(parsedPosts);
+    } catch (error) {
+      console.error("Error al cargar publicaciones o reacciones:", error);
+    }
+  };
+
+  fetchPosts();
+}, []);
+
 
   const [searchQuery, setSearchQuery] = useState("");
   const [commentModalVisible, setCommentModalVisible] = useState(false);
@@ -97,66 +94,67 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
       post.author.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleReaction = (postId: string, type: "like" | "dislike") => {
-    const post = posts.find((p) => p.id === postId);
-    if (!post) return;
+  const handleReaction = async (postId: string, type: "like" | "dislike") => {
+    console.log("Reacción activada:", { postId, type });
+  const post = posts.find((p) => p.id === postId);
+  if (!post) return;
 
-    const currentReaction = userReactions[postId];
-    const newReactions = { ...userReactions };
+  const currentReaction = userReactions[postId];
+  const newReactions = { ...userReactions };
 
-    if (currentReaction === type) {
-      // Quitar reacción
-      newReactions[postId] = null;
-      setPosts(
-        posts.map((p) => {
-          if (p.id === postId) {
-            return {
+  const usuarioID = await AsyncStorage.getItem("correo");
+  if (!usuarioID) return;
+
+  if (currentReaction === type) {
+    // Remover reacción en UI
+    newReactions[postId] = null;
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
               ...p,
               [type === "like" ? "likes" : "dislikes"]:
                 p[type === "like" ? "likes" : "dislikes"] - 1,
-            };
-          }
-          return p;
-        })
-      );
-    } else {
-      // Agregar nueva reacción
-      if (currentReaction) {
-        // Quitar reacción anterior
-        setPosts(
-          posts.map((p) => {
-            if (p.id === postId) {
-              return {
-                ...p,
-                [currentReaction === "like" ? "likes" : "dislikes"]:
-                  p[currentReaction === "like" ? "likes" : "dislikes"] - 1,
-                [type === "like" ? "likes" : "dislikes"]:
-                  p[type === "like" ? "likes" : "dislikes"] + 1,
-              };
             }
-            return p;
-          })
-        );
-      } else {
-        // Solo agregar nueva reacción
-        setPosts(
-          posts.map((p) => {
-            if (p.id === postId) {
-              return {
-                ...p,
-                [type === "like" ? "likes" : "dislikes"]:
-                  p[type === "like" ? "likes" : "dislikes"] + 1,
-              };
-            }
-            return p;
-          })
-        );
-      }
-      newReactions[postId] = type;
-    }
+          : p
+      )
+    );
 
-    setUserReactions(newReactions);
-  };
+    // Remover en base de datos
+    await axios.delete(`${API_URL}/api/reacciones`, {
+      data: { usuarioID, publicacionID: postId },
+    });
+  } else {
+    // Cambiar reacción en UI
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              [currentReaction === "like" ? "likes" : "dislikes"]:
+                currentReaction
+                  ? p[currentReaction === "like" ? "likes" : "dislikes"] - 1
+                  : p[currentReaction === "like" ? "likes" : "dislikes"],
+              [type === "like" ? "likes" : "dislikes"]:
+                p[type === "like" ? "likes" : "dislikes"] + 1,
+            }
+          : p
+      )
+    );
+
+    newReactions[postId] = type;
+
+    // Crear/actualizar en base de datos
+    await axios.post(`${API_URL}/api/reacciones`, {
+      usuarioID,
+      publicacionID: postId,
+      tipo: type,
+    });
+  }
+
+  setUserReactions(newReactions);
+};
+
 
   const handleCommentPress = (post: BlogPost) => {
     setSelectedPost(post);

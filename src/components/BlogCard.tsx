@@ -53,7 +53,9 @@ const BlogCard = ({
         <View style={styles.reactionsRow}>
           <TouchableOpacity
             style={styles.reactionBtn}
-            onPress={() => onReact(post.id, "like")}
+            onPress={() => {
+              console.log("🟡 Botón LIKE presionado:", post.id);
+              onReact(post.id, "like") } }
           >
             <IconButton
               icon={userReaction === "like" ? "thumb-up" : "thumb-up-outline"}
@@ -66,7 +68,8 @@ const BlogCard = ({
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.reactionBtn}
-            onPress={() => onReact(post.id, "dislike")}
+            onPress={() => { console.log("🟡 Botón DISLIKE presionado:", post.id);
+              onReact(post.id, "dislike")} }
           >
             <IconButton
               icon={
