@@ -112,6 +112,9 @@ const LoginScreen = () => {
 
       console.log("Redirigiendo a Home...");
       await AsyncStorage.setItem("user", JSON.stringify(data));
+      await AsyncStorage.setItem("correo", data._id);
+      const storedCorreo = await AsyncStorage.getItem("correo");
+      console.log("✅ Correo guardado en AsyncStorage:", storedCorreo);
       login(data);
       navigation.navigate("Perfil");
   } catch (error) {

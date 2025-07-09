@@ -11,12 +11,12 @@ import reaccionRoutes from "./routes/reaccion.routes";
 dotenv.config();
 
 const app = express();
-//const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 4000;
 
 //Esto de abajo se hace en caso de que haya problemas con el navegador o la red y se ocupen hacer pruebas en
 //el mismo dispositivo,
 
-const PORT = Number(process.env.PORT) || 4000;
+//const PORT = Number(process.env.PORT) || 4000;
 
 // 1. Conectar a MongoDB
 connectDB();
@@ -45,8 +45,11 @@ app.get("/", (req, res) => {
   res.send("API funcionando ✅");
 });
 
-// 5. Iniciar servidor
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Backend corriendo en http://0.0.0.0:${PORT}`);
-});
+// 5. Iniciar servidor 
+//app.listen(PORT, "0.0.0.0", () => {
+  //console.log(`🚀 Backend corriendo en http://0.0.0.0:${PORT}`);
+//});
 
+app.listen(PORT, () => {
+  console.log(`🚀 Backend corriendo en http://localhost:${PORT}`);
+});

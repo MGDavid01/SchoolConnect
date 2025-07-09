@@ -96,5 +96,24 @@ router.get("/conteo", async (req, res) => {
   }
 });
 
+router.post("/bulk", async (req, res) => {
+  console.log("🟢 POST /api/publicaciones/bulk");
+  const { ids } = req.body;
+
+  if (!Array.isArray(ids)) {
+    return res.status(400).json({ message: "Ids debe ser un array" });
+  }
+
+  try {
+    const publicaciones = await PublicacionModel.find({
+      _id: { $in: ids }
+    });
+    res.json(publicaciones);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al obtener publicaciones" });
+  }
+});
+
 
 export default router;

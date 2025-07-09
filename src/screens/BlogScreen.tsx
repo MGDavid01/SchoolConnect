@@ -36,17 +36,18 @@ interface BlogScreenProps {
 
 const BlogScreen = ({ navigation }: BlogScreenProps) => {
   const [posts, setPosts] = useState<BlogPost[]>([  ]);
-
+  
   useEffect(() => {
   const fetchPosts = async () => {
     try {
       const publicacionesRes = await axios.get(`${API_URL}/api/publicaciones`);
       const publicaciones = publicacionesRes.data;
-
+        
       const conteoRes = await axios.get(`${API_URL}/api/reacciones/conteo`);
       const conteos = conteoRes.data;
 
       const usuarioID = await AsyncStorage.getItem("correo");
+      console.log("📩 usuarioID recuperado de AsyncStorage:", usuarioID);
       let reacciones: Record<string, "like" | "dislike"> = {};
       if (usuarioID) {
         const reaccionRes = await axios.get(`${API_URL}/api/reacciones/${usuarioID}`);
@@ -94,8 +95,8 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
       post.author.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleReaction = async (postId: string, type: "like" | "dislike") => {
-    console.log("Reacción activada:", { postId, type });
+ const handleReaction = async (postId: string, type: "like" | "dislike") => {
+  console.log("Reacción activada:", { postId, type });
   const post = posts.find((p) => p.id === postId);
   if (!post) return;
 
@@ -105,55 +106,49 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
   const usuarioID = await AsyncStorage.getItem("correo");
   if (!usuarioID) return;
 
-  if (currentReaction === type) {
-    // Remover reacción en UI
-    newReactions[postId] = null;
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              [type === "like" ? "likes" : "dislikes"]:
-                p[type === "like" ? "likes" : "dislikes"] - 1,
-            }
-          : p
-      )
+  try {
+    if (currentReaction === type) {
+      // El usuario quiere remover su reacción actual (like o dislike)
+      newReactions[postId] = null;
+
+      await axios.post(`${API_URL}/api/reacciones`, {
+        usuarioID,
+        publicacionID: postId,
+        tipo: type,
+        accion: "eliminar", // Opcional: si el backend espera un campo para distinguir
+      });
+    } else {
+      // El usuario quiere cambiar o agregar una nueva reacción
+      newReactions[postId] = type;
+
+      await axios.post(`${API_URL}/api/reacciones`, {
+        usuarioID,
+        publicacionID: postId,
+        tipo: type,
+        accion: "agregar", // Opcional
+      });
+    }
+
+    // Luego de actualizar backend, traer conteo actualizado
+    const conteoRes = await axios.get(`${API_URL}/api/reacciones/conteo`);
+    const conteos = conteoRes.data;
+
+    // Actualizar posts con conteos reales del backend
+    setPosts((prevPosts) =>
+      prevPosts.map((p) => ({
+        ...p,
+        likes: conteos[p.id]?.like || 0,
+        dislikes: conteos[p.id]?.dislike || 0,
+      }))
     );
 
-    // Remover en base de datos
-    await axios.delete(`${API_URL}/api/reacciones`, {
-      data: { usuarioID, publicacionID: postId },
-    });
-  } else {
-    // Cambiar reacción en UI
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              [currentReaction === "like" ? "likes" : "dislikes"]:
-                currentReaction
-                  ? p[currentReaction === "like" ? "likes" : "dislikes"] - 1
-                  : p[currentReaction === "like" ? "likes" : "dislikes"],
-              [type === "like" ? "likes" : "dislikes"]:
-                p[type === "like" ? "likes" : "dislikes"] + 1,
-            }
-          : p
-      )
-    );
-
-    newReactions[postId] = type;
-
-    // Crear/actualizar en base de datos
-    await axios.post(`${API_URL}/api/reacciones`, {
-      usuarioID,
-      publicacionID: postId,
-      tipo: type,
-    });
+    // Actualizar la reacción local
+    setUserReactions(newReactions);
+  } catch (error) {
+    console.error("Error al actualizar reacción:", error);
   }
-
-  setUserReactions(newReactions);
 };
+
 
 
   const handleCommentPress = (post: BlogPost) => {
