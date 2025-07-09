@@ -1,9 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { COLORS } from "../theme/theme";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL } from "../constants/api";
+
+import BlogCard from "../components/BlogCard";
+
+import { useFocusEffect } from "@react-navigation/native";
+import { eventBus } from "../utils/eventBus";
 
 type SectionKey = "publicaciones" | "comentarios" | "guardados" | "likes";
 
@@ -11,7 +16,14 @@ type Post = {
   id: string;
   title: string;
   content: string;
-  // otros campos que necesites mostrar
+  author: string;
+  date: string;
+  category: string;
+  imageUrl: string;
+  likes: number;
+  dislikes: number;
+  comments: any[];
+  type: string;
 };
 
 type ProfileSectionsProps = {
@@ -19,12 +31,69 @@ type ProfileSectionsProps = {
   onSectionChange: (section: SectionKey) => void;
 };
 
-const ProfileSections: React.FC<ProfileSectionsProps> = ({
-  activeSection,
-  onSectionChange,
-}) => {
+const ProfileSections: React.FC<ProfileSectionsProps> = ({ activeSection, onSectionChange }) => {
   const [likedPosts, setLikedPosts] = useState<Post[]>([]);
   const [loadingLikes, setLoadingLikes] = useState(false);
+  const [userReactions, setUserReactions] = useState<Record<string, "like" | "dislike" | null>>({});
+
+  const fetchLikedPosts = async () => {
+  setLoadingLikes(true);
+  try {
+    const usuarioID = await AsyncStorage.getItem("correo");
+    console.log("fetchLikedPosts - usuarioID:", usuarioID);
+    if (!usuarioID) {
+      setLikedPosts([]);
+      setLoadingLikes(false);
+      return;
+    }
+
+    const resReacciones = await axios.get(`${API_URL}/api/reacciones/${usuarioID}`);
+    console.log("fetchLikedPosts - reacciones:", resReacciones.data);
+
+    const reacciones = resReacciones.data;
+    const likedPostIds = Object.entries(reacciones)
+      .filter(([_, tipo]) => tipo === "like")
+      .map(([postId]) => postId);
+
+    console.log("fetchLikedPosts - likedPostIds:", likedPostIds);
+
+    if (likedPostIds.length === 0) {
+      setLikedPosts([]);
+      setLoadingLikes(false);
+      return;
+    }
+
+    const resPosts = await axios.post(`${API_URL}/api/publicaciones/bulk`, { ids: likedPostIds });
+    console.log("fetchLikedPosts - publicaciones:", resPosts.data);
+
+    const resConteo = await axios.get(`${API_URL}/api/reacciones/conteo`);
+    const conteos = resConteo.data;
+    console.log("fetchLikedPosts - conteos:", conteos);
+
+    const parsedPosts = resPosts.data.map((p: any) => ({
+      id: p._id,
+      title: p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1),
+      content: p.contenido,
+      author: p.autorNombre || "Autor desconocido",
+      date: new Date(p.fecha).toISOString().split("T")[0],
+      category: p.visibilidad === "todos" ? "Público" : "Grupo",
+      imageUrl: p.imagenURL || "",
+      likes: conteos[p._id]?.like || 0,
+      dislikes: conteos[p._id]?.dislike || 0,
+      comments: [],
+      type: "blog",
+    }));
+
+    setLikedPosts(parsedPosts);
+    setUserReactions(reacciones);
+  } catch (error) {
+    console.error("❌ Error al cargar publicaciones liked:", error);
+    setLikedPosts([]);
+  } finally {
+    setLoadingLikes(false);
+  }
+};
+
 
   useEffect(() => {
     if (activeSection === "likes") {
@@ -32,46 +101,66 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({
     }
   }, [activeSection]);
 
-  const fetchLikedPosts = async () => {
-    setLoadingLikes(true);
-    try {
-      const usuarioID = await AsyncStorage.getItem("correo");
-      if (!usuarioID) {
-        setLikedPosts([]);
-        setLoadingLikes(false);
-        return;
+  useFocusEffect(
+    useCallback(() => {
+      if (activeSection === "likes") {
+        fetchLikedPosts();
       }
+    }, [activeSection])
+  );
 
-      // 1. Obtener las reacciones del usuario
-      const resReacciones = await axios.get(`${API_URL}/api/reacciones/${usuarioID}`);
-      const reacciones = resReacciones.data; // { publicacionID: "like" | "dislike" }
-
-      // 2. Filtrar solo las que son "like"
-      const likedPostIds = Object.entries(reacciones)
-        .filter(([_, tipo]) => tipo === "like")
-        .map(([postId]) => postId);
-
-      if (likedPostIds.length === 0) {
-        setLikedPosts([]);
-        setLoadingLikes(false);
-        return;
+  useEffect(() => {
+    const handler = () => {
+      if (activeSection === "likes") {
+        fetchLikedPosts();
       }
+    };
+    eventBus.on("reactionChanged", handler);
+    return () => {
+      eventBus.off("reactionChanged", handler);
+    };
+  }, [activeSection]);
 
-      // 3. Obtener los detalles de esas publicaciones
-      // Supongo que tienes un endpoint para obtener publicaciones por IDs
-      // Si no, puede que tengas que obtener todas y filtrarlas localmente
-      const resPosts = await axios.post(`${API_URL}/api/publicaciones/bulk`, {
-        ids: likedPostIds,
+  const handleReaction = async (postId: string, type: "like" | "dislike") => {
+  console.log("handleReaction:", { postId, type });
+  const currentReaction = userReactions[postId];
+  console.log("handleReaction - currentReaction:", currentReaction);
+  const newReactions = { ...userReactions };
+
+  const usuarioID = await AsyncStorage.getItem("correo");
+  console.log("handleReaction - usuarioID:", usuarioID);
+  if (!usuarioID) return;
+
+  try {
+    if (currentReaction === type) {
+      newReactions[postId] = null;
+      await axios.post(`${API_URL}/api/reacciones`, {
+        usuarioID,
+        publicacionID: postId,
+        tipo: type,
+        accion: "eliminar",
       });
-
-      setLikedPosts(resPosts.data); // Ajusta según respuesta real
-    } catch (error) {
-      console.error("Error al cargar publicaciones liked", error);
-      setLikedPosts([]);
-    } finally {
-      setLoadingLikes(false);
+    } else {
+      newReactions[postId] = type;
+      await axios.post(`${API_URL}/api/reacciones`, {
+        usuarioID,
+        publicacionID: postId,
+        tipo: type,
+        accion: "agregar",
+      });
     }
-  };
+
+    setUserReactions(newReactions);
+
+    // Recarga las publicaciones liked
+    await fetchLikedPosts();
+
+    eventBus.emit("reactionChanged");
+  } catch (error) {
+    console.error("Error al actualizar reacción:", error);
+  }
+};
+
 
   const sections: { key: SectionKey; label: string }[] = [
     { key: "publicaciones", label: "Publicaciones" },
@@ -104,29 +193,37 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({
         ))}
       </View>
 
-<View style={styles.sectionContent}>
-  {activeSection === "publicaciones" ? (
-    <Text style={styles.emptyText}>No hay publicaciones aún</Text>
-  ) : activeSection === "likes" ? (
-    loadingLikes ? (
-      <Text style={styles.emptyText}>Cargando likes...</Text>
-    ) : likedPosts.length === 0 ? (
-      <Text style={styles.emptyText}>No hay publicaciones con like aún</Text>
-    ) : (
-      <ScrollView>
-        {likedPosts.map((post) => (
-          <View key={String(post.id)} style={{ marginBottom: 12 }}>
-            <Text style={{ fontWeight: "bold", fontSize: 16 }}>{post.title}</Text>
-            <Text numberOfLines={2}>{post.content}</Text>
-          </View>
-        ))}
-      </ScrollView>
-    )
-  ) : (
-    <Text style={styles.emptyText}>No hay reacciones aún</Text>
-  )}
-</View>
-
+      <View style={styles.sectionContent}>
+        {activeSection === "likes" ? (
+          loadingLikes ? (
+            <Text style={styles.emptyText}>Cargando likes...</Text>
+          ) : likedPosts.length === 0 ? (
+            <Text style={styles.emptyText}>No hay publicaciones con like aún</Text>
+          ) : (
+            <ScrollView>
+              {likedPosts.map((post) => (
+                <BlogCard
+                  key={post.id}
+                  post={post}
+                  expanded={false}
+                  userReaction={userReactions[post.id] || null}
+                  onReact={(postId, tipo) => {
+                    console.log("Reacción en BlogCard", post.id, tipo);
+                    if (tipo === "like" || tipo === "dislike") {
+                      handleReaction(postId, tipo);
+                    }
+                  }}
+                  onExpand={() => {}}
+                  onComment={() => {}}
+                  onViewMore={() => {}}
+                />
+              ))}
+            </ScrollView>
+          )
+        ) : (
+          <Text style={styles.emptyText}>No hay reacciones aún</Text>
+        )}
+      </View>
     </View>
   );
 };

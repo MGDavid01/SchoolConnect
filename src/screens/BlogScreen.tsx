@@ -28,7 +28,7 @@ import { API_URL } from "../constants/api";
 import { useEffect } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import { eventBus } from "../utils/eventBus";
 
 interface BlogScreenProps {
   navigation: NavigationProp<any>;
@@ -76,7 +76,17 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
   };
 
   fetchPosts();
-}, []);
+
+  const handler = () => {
+    fetchPosts();
+  };
+
+  eventBus.on("reactionChanged", handler);
+
+  return () => {
+    eventBus.off("reactionChanged", handler);
+  };
+  }, []);
 
 
   const [searchQuery, setSearchQuery] = useState("");
