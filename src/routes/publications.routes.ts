@@ -2,6 +2,7 @@ import express from "express";
 import { PublicacionModel } from "../models/Publication";
 import { ReaccionModel } from "../models/Reaccion";
 import { UserModel } from "../models/User";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -105,15 +106,53 @@ router.post("/bulk", async (req, res) => {
   }
 
   try {
-    const publicaciones = await PublicacionModel.find({
-      _id: { $in: ids }
-    });
+    const objectIds = ids.map((id) => new mongoose.Types.ObjectId(id));
+
+    const publicaciones = await PublicacionModel.aggregate([
+      {
+        $match: {
+          _id: { $in: objectIds },
+          activo: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "usuarios",
+          localField: "autorID",
+          foreignField: "_id",
+          as: "autor",
+        },
+      },
+      {
+        $unwind: "$autor",
+      },
+      {
+        $project: {
+          _id: 1,
+          contenido: 1,
+          tipo: 1,
+          fecha: 1,
+          visibilidad: 1,
+          imagenURL: 1,
+          autorID: 1,
+          autorNombre: {
+            $concat: [
+              "$autor.nombre", " ",
+              "$autor.apellidoPaterno", " ",
+              "$autor.apellidoMaterno"
+            ]
+          }
+        },
+      },
+    ]);
+
     res.json(publicaciones);
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error en POST /bulk:", error);
     res.status(500).json({ message: "Error al obtener publicaciones" });
   }
 });
+
 
 
 export default router;
