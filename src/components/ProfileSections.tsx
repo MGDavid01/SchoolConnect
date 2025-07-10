@@ -35,6 +35,7 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({ activeSection, onSect
   const [likedPosts, setLikedPosts] = useState<Post[]>([]);
   const [loadingLikes, setLoadingLikes] = useState(false);
   const [userReactions, setUserReactions] = useState<Record<string, "like" | "dislike" | null>>({});
+  const [conteoComentarios, setConteoComentarios] = useState<Record<string, number>>({});
 
   const fetchLikedPosts = async () => {
   setLoadingLikes(true);
@@ -216,6 +217,7 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({ activeSection, onSect
                   onExpand={() => {}}
                   onComment={() => {}}
                   onViewMore={() => {}}
+                  comentarioCount={conteoComentarios[post.id] || 0}
                 />
               ))}
             </ScrollView>

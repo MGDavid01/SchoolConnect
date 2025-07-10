@@ -34,9 +34,22 @@ interface BlogScreenProps {
   navigation: NavigationProp<any>;
 }
 
+
 const BlogScreen = ({ navigation }: BlogScreenProps) => {
   const [posts, setPosts] = useState<BlogPost[]>([  ]);
-  
+  const [conteoComentarios, setConteoComentarios] = useState<Record<string, number>>({});
+  const [comentariosPorPublicacion, setComentariosPorPublicacion] = useState<Record<string, any[]>>({});
+        const fetchComentarios = async (postId: string) => {
+        try {
+          const res = await axios.get(`${API_URL}/api/comentarios/${postId}`);
+          setComentariosPorPublicacion((prev) => ({
+            ...prev,
+            [postId]: res.data,
+          }));
+        } catch (error) {
+          console.error("❌ Error al cargar comentarios", error);
+        }
+      };
   useEffect(() => {
   const fetchPosts = async () => {
     try {
@@ -47,7 +60,12 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
       const conteos = conteoRes.data;
 
       const comentariosRes = await axios.get(`${API_URL}/api/comentarios/conteo/todos`);
-      const conteoComentarios = comentariosRes.data;
+      const conteoComentariosData = comentariosRes.data;
+      setConteoComentarios(conteoComentariosData);
+
+
+
+      
 
 
       const usuarioID = await AsyncStorage.getItem("correo");
@@ -71,6 +89,7 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
         dislikes: conteos[item._id]?.dislike || 0,
         comments: [],
         type: "blog",
+        
       }));
 
       setPosts(parsedPosts);
@@ -164,11 +183,48 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
 };
 
 
+const handleCommentPress = async (post: BlogPost) => {
+  try {
+    const res = await axios.get(`${API_URL}/api/comentarios/${post.id}`);
+    const comentarios = res.data;
 
-  const handleCommentPress = (post: BlogPost) => {
-    setSelectedPost(post);
+    const enrichedComments = comentarios.map((c: any) => ({
+      id: c._id,
+      content: c.contenido,
+      author: c.autorNombre || c.usuarioID,
+      date: new Date(c.fecha).toISOString().split("T")[0],
+    }));
+
+    // ✅ Guardar los comentarios solo en el estado centralizado
+    setComentariosPorPublicacion((prev) => ({
+      ...prev,
+      [post.id]: enrichedComments,
+    }));
+    console.log("🟠 Comentarios recibidos del backend:", comentarios);
+    console.log("🟠 Comentarios enriquecidos:", enrichedComments);
+
+    // ✅ Guardar el post seleccionado (sin tocar sus comments)
+    setSelectedPost({
+        ...(post as any),
+        comments: enrichedComments,
+      });
+
+    console.log(selectedPost?.comments);
+    console.log("🟢 Post seleccionado con comentarios:", {
+      ...post,
+      comments: enrichedComments,
+    });
+
+    // ✅ Mostrar el modal
     setCommentModalVisible(true);
-  };
+  } catch (error) {
+    console.error("❌ Error al cargar comentarios:", error);
+  }
+};
+
+
+
+
 
   const handleAddComment = () => {
     if (!selectedPost || !newComment.trim()) return;
@@ -224,6 +280,7 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
               onViewMore={() => {
                 // lógica que quieras para ver más (puede ser navegar a detalle)
               }}
+              comentarioCount={conteoComentarios[post.id] || 0}
           />
         ))}
       </ScrollView>
@@ -235,8 +292,9 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
           navigation.navigate("CreatePost");
         }}
       />
-
+      
       <Modal
+      
         visible={commentModalVisible}
         animationType="slide"
         transparent={true}
@@ -252,25 +310,24 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
                 onPress={() => setCommentModalVisible(false)}
               />
             </View>
-
+            
             <ScrollView style={styles.commentsList}>
-              {selectedPost?.comments.map((comment) => (
-                <View key={comment.id} style={styles.commentItem}>
-                  <Text style={styles.commentAuthor}>{comment.author}</Text>
-                  <Text style={styles.commentText}>{comment.content}</Text>
-                  <View style={styles.commentMeta}>
-                    <Text style={styles.commentDate}>{comment.date}</Text>
-                    <TouchableOpacity style={styles.commentLike}>
-                      <IconButton
-                        icon="thumb-up-outline"
-                        size={16}
-                        iconColor={COLORS.textSecondary}
-                      />
-                      <Text style={styles.likeCount}>{comment.likes}</Text>
-                    </TouchableOpacity>
+              {selectedPost?.comments && selectedPost.comments.length > 0 ? (
+                selectedPost.comments.map((comment) => (
+                  <View key={comment.id} style={styles.commentItem}>
+                    <Text style={styles.commentAuthor}>{comment.author}</Text>
+                    <Text style={styles.commentText}>{comment.content}</Text>
+                    <View style={styles.commentMeta}>
+                      <Text style={styles.commentDate}>{comment.date}</Text>
+                      
+                    </View>
                   </View>
-                </View>
-              ))}
+                ))
+              ) : (
+                <Text style={{ textAlign: "center", color: COLORS.textSecondary }}>
+                  No hay comentarios aún.
+                </Text>
+              )}
             </ScrollView>
 
             <KeyboardAvoidingView

@@ -13,6 +13,7 @@ interface BlogCardProps {
   onReact: (postId: string, reaction: "like" | "dislike") => void;
   onComment: (post: BlogPost) => void;
   onViewMore: () => void;
+  comentarioCount: number; // 👈 NUEVO
 }
 
 const BlogCard = ({
@@ -22,6 +23,7 @@ const BlogCard = ({
   onExpand,
   onReact,
   onComment,
+  comentarioCount,
 }: BlogCardProps) => (
   <Card style={styles.card}>
     <Card.Content>
@@ -94,8 +96,7 @@ const BlogCard = ({
               iconColor={COLORS.textSecondary}
             />
             <Text style={styles.reactionCount}>
-              {post.comments.length}{" "}
-              {post.comments.length === 1 ? "comentario" : "comentarios"}
+              {comentarioCount} {comentarioCount === 1 ? "comentario" : "comentarios"}
             </Text>
           </TouchableOpacity>
         </View>

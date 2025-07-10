@@ -1,6 +1,8 @@
 import express from "express";
 import {ComentarioModel} from "../models/Comentario"; // ajusta la ruta según tu estructura
 import { UserModel } from "../models/User"; // si necesitas obtener autor
+import mongoose from "mongoose";
+
 
 const router = express.Router();
 
@@ -10,7 +12,7 @@ router.get("/:publicacionID", async (req, res) => {
 
   try {
     const comentarios = await ComentarioModel.aggregate([
-      { $match: { publicacionID } },
+      { $match: { publicacionID: new mongoose.Types.ObjectId(publicacionID) } },
       {
         $lookup: {
           from: "usuarios",
@@ -58,9 +60,10 @@ router.get("/conteo/todos", async (_req, res) => {
       },
     ]);
 
+    // 🔧 Conversión segura de ObjectId a string como clave
     const resultado: Record<string, number> = {};
     conteo.forEach((item) => {
-      resultado[item._id] = item.totalComentarios;
+      resultado[item._id.toString()] = item.totalComentarios;
     });
 
     res.json(resultado);
