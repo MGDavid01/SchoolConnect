@@ -46,6 +46,10 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
       const conteoRes = await axios.get(`${API_URL}/api/reacciones/conteo`);
       const conteos = conteoRes.data;
 
+      const comentariosRes = await axios.get(`${API_URL}/api/comentarios/conteo/todos`);
+      const conteoComentarios = comentariosRes.data;
+
+
       const usuarioID = await AsyncStorage.getItem("correo");
       console.log("📩 usuarioID recuperado de AsyncStorage:", usuarioID);
       let reacciones: Record<string, "like" | "dislike"> = {};
