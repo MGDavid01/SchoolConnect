@@ -49,6 +49,7 @@ const publicationSchema = new Schema<IPublication>({
   },
 },  
     {
+        versionKey: false,
         collection: "publicacion",
     }
 );

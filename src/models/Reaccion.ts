@@ -28,6 +28,7 @@ const reaccionSchema = new Schema<IReaccion>({
   },
 },
 {
+    versionKey: false,
     collection: "reaccion",
 }
 

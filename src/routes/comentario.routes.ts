@@ -74,6 +74,7 @@ router.get("/conteo/todos", async (_req, res) => {
 });
 
 // Agregar nuevo comentario
+// Agregar nuevo comentario
 router.post("/", async (req, res) => {
   const { publicacionID, usuarioID, contenido } = req.body;
 
@@ -86,15 +87,17 @@ router.post("/", async (req, res) => {
       publicacionID,
       usuarioID,
       contenido,
-      fecha: new Date(),
+      fecha: new Date()
     });
 
     await nuevoComentario.save();
-    res.status(201).json(nuevoComentario);
+
+    res.status(201).json(nuevoComentario); // ← devolver el comentario guardado
   } catch (error) {
     console.error("❌ Error al agregar comentario:", error);
     res.status(500).json({ message: "Error al agregar comentario" });
   }
 });
+
 
 export default router;

@@ -53,12 +53,28 @@ router.get("/", async (req, res) => {
 
 // Crear una nueva publicación
 router.post("/", async (req, res) => {
+  const { autorID, contenido, grupoID, tipo, visibilidad, imagenURL } = req.body;
+
+  if (!autorID || !contenido || !tipo || !visibilidad) {
+    return res.status(400).json({ message: "Faltan campos requeridos." });
+  }
+
   try {
-    const nuevaPublicacion = new PublicacionModel(req.body);
+    const nuevaPublicacion = new PublicacionModel({
+      autorID,
+      contenido,
+      grupoID,
+      tipo,
+      visibilidad,
+      imagenURL,
+    });
+
     await nuevaPublicacion.save();
+
     res.status(201).json(nuevaPublicacion);
   } catch (error) {
-    res.status(400).json({ message: "Error al crear publicación" });
+    console.error("❌ Error al crear publicación:", error);
+    res.status(500).json({ message: "Error del servidor." });
   }
 });
 

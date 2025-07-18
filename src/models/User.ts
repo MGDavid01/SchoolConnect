@@ -60,6 +60,7 @@ const usuarioSchema = new Schema<IUser>({
   },
 },
   {
+  versionKey: false,
   collection: "usuarios",
   }
 );

@@ -29,13 +29,16 @@ import { useEffect } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { eventBus } from "../utils/eventBus";
-
+import { useAuth } from "../contexts/AuthContext";
 interface BlogScreenProps {
   navigation: NavigationProp<any>;
 }
 
 
+
+
 const BlogScreen = ({ navigation }: BlogScreenProps) => {
+  const { user } = useAuth();
   const [posts, setPosts] = useState<BlogPost[]>([  ]);
   const [conteoComentarios, setConteoComentarios] = useState<Record<string, number>>({});
   const [comentariosPorPublicacion, setComentariosPorPublicacion] = useState<Record<string, any[]>>({});
@@ -62,11 +65,6 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
       const comentariosRes = await axios.get(`${API_URL}/api/comentarios/conteo/todos`);
       const conteoComentariosData = comentariosRes.data;
       setConteoComentarios(conteoComentariosData);
-
-
-
-      
-
 
       const usuarioID = await AsyncStorage.getItem("correo");
       console.log("📩 usuarioID recuperado de AsyncStorage:", usuarioID);
@@ -226,31 +224,55 @@ const handleCommentPress = async (post: BlogPost) => {
 
 
 
-  const handleAddComment = () => {
-    if (!selectedPost || !newComment.trim()) return;
-
-    const newCommentObj: Comment = {
-      id: Date.now().toString(),
-      content: newComment.trim(),
-      author: "Usuario Actual", // Esto debería venir del contexto de autenticación
-      date: new Date().toISOString().split("T")[0],
-      likes: 0,
+const handleAddComment = async () => {
+  
+  if (!newComment.trim()) return;
+  if (!selectedPost) return;
+  
+  try {
+    const payload = {
+      publicacionID: selectedPost.id,
+      usuarioID: user?._id,
+      contenido: newComment.trim(),
     };
 
-    setPosts(
-      posts.map((post) => {
-        if (post.id === selectedPost.id) {
-          return {
-            ...post,
-            comments: [newCommentObj, ...post.comments],
-          };
-        }
-        return post;
-      })
+    const res = await axios.post(`${API_URL}/api/comentarios`, payload);
+    const nuevoComentario = res.data;
+    
+    const enriched = {
+      id: nuevoComentario._id,
+      content: nuevoComentario.contenido,
+      author: user?.nombre + " " + user?.apellidoPaterno + " " + user?.apellidoMaterno,
+      date: new Date(nuevoComentario.fecha).toISOString().split("T")[0],
+    };
+
+
+    // Actualizar el estado
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === selectedPost.id
+          ? { ...p, comments: [...(p.comments || []), enriched] }
+          : p
+      )
+    );
+
+    setSelectedPost((prev) =>
+      prev ? { ...prev, comments: [...prev.comments, enriched] } : prev
     );
 
     setNewComment("");
-  };
+    inputRef.current?.clear();
+
+    // Opcional: actualizar contador global
+    setConteoComentarios((prev) => ({
+      ...prev,
+      [selectedPost.id]: (prev[selectedPost.id] || 0) + 1,
+    }));
+  } catch (error) {
+    console.error("❌ Error al agregar comentario:", error);
+  }
+};
+
 
   const handleExpandPost = (postId: string) => {
     setExpandedPostId(expandedPostId === postId ? null : postId);

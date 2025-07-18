@@ -1,380 +1,162 @@
-import React, { useState } from "react"
-
+import React, { useState } from "react";
 import {
   View,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  TouchableOpacity,
-  Image
-} from "react-native"
-import {
   Text,
   TextInput,
-  Button,
-  Card,
-  Chip,
-  IconButton,
-  Menu,
-  Divider
-} from "react-native-paper"
-import { SafeAreaView } from "react-native-safe-area-context"
-import { COLORS } from "../theme/theme"
-import { StackNavigationProp } from "@react-navigation/stack"
-import { RootStackParamList } from "../navigation/types" // Asegúrate de tener definido tu tipo de navegación
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { Button, Card, Chip, Menu } from "react-native-paper";
+import { useAuth } from "../contexts/AuthContext"; // Asegúrate de que esta ruta sea correcta
+import { COLORS } from "../theme/theme";
+import axios from "axios";
+import { API_URL } from "../constants/api";
 
-const CATEGORIES = [
-  "Anuncios",
-  "Académico", 
-  "General",
-  "Deportes",
-  "Cultural",
-  "Tecnología",
-  "Estudiantes"
-] as const
+const CreatePostScreen = () => {
+  const navigation = useNavigation();
+  const { user } = useAuth();
 
-type Category = typeof CATEGORIES[number]
+  const [contenido, setContenido] = useState("");
+  const [tipo, setTipo] = useState<"normal" | "ayuda" | "pregunta" | "aviso">("normal");
+  const [visibilidad, setVisibilidad] = useState<"todos" | "grupo">("todos");
 
-interface Post {
-  id: string
-  title: string
-  content: string
-  author: string
-  date: string
-  category: string
-  imageUrl: string | null
-  likes: number
-  dislikes: number
-  comments: any[] // Puedes definir un tipo más específico para los comentarios
-  type: "blog"
-}
+  const [tipoMenuVisible, setTipoMenuVisible] = useState(false);
+  const [visibilidadMenuVisible, setVisibilidadMenuVisible] = useState(false);
 
-interface FormErrors {
-  title?: string
-  content?: string
-  category?: string
-  imageUrl?: string
-}
-
-interface CreatePostScreenProps {
-  navigation: StackNavigationProp<RootStackParamList, "CreatePost">
-}
-
-export default function CreatePostScreen({ navigation }: CreatePostScreenProps) {
-  const [title, setTitle] = useState("")
-  const [content, setContent] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState<Category | "">("")
-  const [imageUrl, setImageUrl] = useState("")
-  const [categoryMenuVisible, setCategoryMenuVisible] = useState(false)
-  const [isPreviewMode, setIsPreviewMode] = useState(false)
-  const [errors, setErrors] = useState<FormErrors>({})
-
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {}
-    
-    if (!title.trim()) {
-      newErrors.title = "El título es obligatorio"
-    } else if (title.length < 10) {
-      newErrors.title = "El título debe tener al menos 10 caracteres"
-    } else if (title.length > 100) {
-      newErrors.title = "El título no puede exceder 100 caracteres"
-    }
-
-    if (!content.trim()) {
-      newErrors.content = "El contenido es obligatorio"
-    } else if (content.length > 5000) {
-      newErrors.content = "El contenido no puede exceder 5000 caracteres"
-    }
-
-    if (!selectedCategory) {
-      newErrors.category = "Debes seleccionar una categoría"
-    }
-
-    if (imageUrl && !isValidUrl(imageUrl)) {
-      newErrors.imageUrl = "La URL de la imagen no es válida"
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const isValidUrl = (string: string): boolean => {
+  const handlePublicar = async () => {
     try {
-      new URL(string)
-      return true
-    } catch (_) {
-      return false
+      const nuevaPublicacion = {
+        autorID: user?._id,
+        contenido,
+        tipo,
+        visibilidad,
+        fecha: new Date(),
+        activo: true
+      };
+
+      await axios.post(`${API_URL}/publicaciones`, nuevaPublicacion);
+
+      navigation.goBack();
+    } catch (error) {
+      console.error("Error al publicar:", error);
     }
-  }
-
-  const handleSave = (): void => {
-    if (!validateForm()) {
-      Alert.alert("Error", "Por favor corrige los errores en el formulario")
-      return
-    }
-
-    const newPost: Post = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      content: content.trim(),
-      author: "Usuario Actual", // Esto debería venir del contexto de autenticación
-      date: new Date().toISOString().split("T")[0],
-      category: selectedCategory,
-      imageUrl: imageUrl.trim() || null,
-      likes: 0,
-      dislikes: 0,
-      comments: [],
-      type: "blog"
-    }
-
-    // Aquí normalmente guardarías en la base de datos
-    console.log("Nueva publicación creada:", newPost)
-    
-    Alert.alert(
-      "Éxito", 
-      "Tu publicación ha sido creada correctamente",
-      [
-        {
-          text: "OK",
-          onPress: () => navigation.goBack()
-        }
-      ]
-    )
-  }
-
-  const handleDiscard = (): void => {
-    if (title.trim() || content.trim()) {
-      Alert.alert(
-        "Descartar cambios",
-        "¿Estás seguro de que quieres descartar los cambios?",
-        [
-          { text: "Cancelar", style: "cancel" },
-          { 
-            text: "Descartar", 
-            style: "destructive",
-            onPress: () => navigation.goBack()
-          }
-        ]
-      )
-    } else {
-      navigation.goBack()
-    }
-  }
-
-  const renderPreview = () => (
-    <Card style={styles.previewCard}>
-      <Card.Content>
-        <Text style={styles.previewTitle}>{title || "Título de la publicación"}</Text>
-        
-        <View style={styles.previewMetadata}>
-          <Text style={styles.previewAuthor}>Usuario Actual</Text>
-          <Text style={styles.previewDate}>
-            {new Date().toLocaleDateString('es-ES')}
-          </Text>
-        </View>
-
-        {selectedCategory && (
-          <Chip 
-            style={styles.previewCategoryChip}
-            textStyle={styles.previewCategoryText}
-          >
-            {selectedCategory}
-          </Chip>
-        )}
-
-        {imageUrl && isValidUrl(imageUrl) && (
-          <Image 
-            source={{ uri: imageUrl }} 
-            style={styles.previewImage}
-            resizeMode="cover"
-          />
-        )}
-
-        <Text style={styles.previewContent}>
-          {content || "Contenido de la publicación..."}
-        </Text>
-      </Card.Content>
-    </Card>
-  )
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Header */}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.select({ ios: "padding", android: undefined })}
+    >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <IconButton
-            icon="close"
-            size={24}
-            onPress={handleDiscard}
-            iconColor={COLORS.text}
-          />
-          <Text style={styles.headerTitle}>
-            {isPreviewMode ? "Vista Previa" : "Nueva Publicación"}
-          </Text>
+          <Text style={styles.headerTitle}>Crear Publicación</Text>
         </View>
-        
         <View style={styles.headerRight}>
-          <IconButton
-            icon={isPreviewMode ? "pencil" : "eye"}
-            size={24}
-            onPress={() => setIsPreviewMode(!isPreviewMode)}
-            iconColor={COLORS.primary}
-          />
-          {!isPreviewMode && (
-            <Button
-              mode="contained"
-              onPress={handleSave}
-              style={styles.saveButton}
-              labelStyle={styles.saveButtonText}
-            >
-              Publicar
-            </Button>
-          )}
+          <TouchableOpacity onPress={handlePublicar} style={styles.saveButton}>
+            <Text style={styles.saveButtonText}>Publicar</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      <Divider />
+      <ScrollView contentContainerStyle={styles.formContainer}>
 
-      {isPreviewMode ? (
-        <ScrollView style={styles.previewContainer}>
-          {renderPreview()}
-        </ScrollView>
-      ) : (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.keyboardContainer}
-        >
-          <ScrollView style={styles.formContainer}>
-            {/* Título */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Título *</Text>
-              <TextInput
-                style={[styles.input, errors.title && styles.inputError]}
-                value={title}
-                onChangeText={setTitle}
-                placeholder="Escribe un título atractivo..."
-                mode="outlined"
-                maxLength={100}
-                error={!!errors.title}
-              />
-              <View style={styles.inputFooter}>
-                {errors.title && (
-                  <Text style={styles.errorText}>{errors.title}</Text>
-                )}
-                <Text style={styles.characterCount}>{title.length}/100</Text>
-              </View>
-            </View>
 
-            {/* Categoría */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Categoría *</Text>
-              <Menu
-                visible={categoryMenuVisible}
-                onDismiss={() => setCategoryMenuVisible(false)}
-                anchor={
-                  <TouchableOpacity
-                    style={[
-                      styles.categorySelector,
-                      errors.category && styles.inputError
-                    ]}
-                    onPress={() => setCategoryMenuVisible(true)}
-                  >
-                    <Text style={[
-                      styles.categorySelectorText,
-                      !selectedCategory && styles.placeholderText
-                    ]}>
-                      {selectedCategory || "Selecciona una categoría"}
-                    </Text>
-                    <IconButton
-                      icon="chevron-down"
-                      size={20}
-                      iconColor={COLORS.textSecondary}
-                    />
-                  </TouchableOpacity>
-                }
+        {/* Selector de tipo */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Tipo de publicación</Text>
+          <Menu
+            visible={tipoMenuVisible}
+            onDismiss={() => setTipoMenuVisible(false)}
+            anchor={
+              <TouchableOpacity
+                style={styles.categorySelector}
+                onPress={() => setTipoMenuVisible(true)}
               >
-                {CATEGORIES.map((category) => (
-                  <Menu.Item
-                    key={category}
-                    onPress={() => {
-                      setSelectedCategory(category)
-                      setCategoryMenuVisible(false)
-                    }}
-                    title={category}
-                  />
-                ))}
-              </Menu>
-              {errors.category && (
-                <Text style={styles.errorText}>{errors.category}</Text>
-              )}
-            </View>
-
-            {/* URL de imagen (opcional) */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>URL de imagen (opcional)</Text>
-              <TextInput
-                style={[styles.input, errors.imageUrl && styles.inputError]}
-                value={imageUrl}
-                onChangeText={setImageUrl}
-                placeholder="https://ejemplo.com/imagen.jpg"
-                mode="outlined"
-                keyboardType="url"
-                error={!!errors.imageUrl}
-              />
-              {errors.imageUrl && (
-                <Text style={styles.errorText}>{errors.imageUrl}</Text>
-              )}
-              {imageUrl && isValidUrl(imageUrl) && (
-                <Image 
-                  source={{ uri: imageUrl }} 
-                  style={styles.imagePreview}
-                  resizeMode="cover"
-                />
-              )}
-            </View>
-
-            {/* Contenido */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Contenido *</Text>
-              <TextInput
-                style={[styles.contentInput, errors.content && styles.inputError]}
-                value={content}
-                onChangeText={setContent}
-                placeholder="Escribe el contenido de tu publicación..."
-                mode="outlined"
-                multiline
-                numberOfLines={10}
-                maxLength={5000}
-                error={!!errors.content}
-              />
-              <View style={styles.inputFooter}>
-                {errors.content && (
-                  <Text style={styles.errorText}>{errors.content}</Text>
-                )}
-                <Text style={styles.characterCount}>{content.length}/5000</Text>
-              </View>
-            </View>
-
-            {/* Información adicional */}
-            <Card style={styles.infoCard}>
-              <Card.Content>
-                <Text style={styles.infoTitle}>💡 Consejos para una buena publicación:</Text>
-                <Text style={styles.infoText}>
-                  • Usa un título claro y descriptivo{'\n'}
-                  • Estructura tu contenido con párrafos{'\n'}
-                  • Añade una imagen si es relevante{'\n'}
-                  • Revisa la ortografía antes de publicar
+                <Text style={styles.categorySelectorText}>
+                  {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
                 </Text>
-              </Card.Content>
-            </Card>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      )}
-    </SafeAreaView>
-  )
-}
+              </TouchableOpacity>
+            }
+          >
+            {["normal", "ayuda", "pregunta", "aviso"].map((item) => (
+              <Menu.Item
+                key={item}
+                onPress={() => {
+                  setTipo(item as any);
+                  setTipoMenuVisible(false);
+                }}
+                title={item.charAt(0).toUpperCase() + item.slice(1)}
+              />
+            ))}
+          </Menu>
+        </View>
+
+        
+
+        {/* Selector de visibilidad */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Visibilidad</Text>
+          <Menu
+            visible={visibilidadMenuVisible}
+            onDismiss={() => setVisibilidadMenuVisible(false)}
+            anchor={
+              <TouchableOpacity
+                style={styles.categorySelector}
+                onPress={() => setVisibilidadMenuVisible(true)}
+              >
+                <Text style={styles.categorySelectorText}>
+                  {visibilidad === "grupo" ? "Solo grupo" : "Todos"}
+                </Text>
+              </TouchableOpacity>
+            }
+          >
+            <Menu.Item onPress={() => { setVisibilidad("todos"); setVisibilidadMenuVisible(false); }} title="Todos" />
+            <Menu.Item onPress={() => { setVisibilidad("grupo"); setVisibilidadMenuVisible(false); }} title="Solo grupo" />
+          </Menu>
+        </View>
+
+            {/* Contenido que escribe el usuario para la realizacion de la publicacion*/}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Contenido</Text>
+          <TextInput
+            style={[styles.input, styles.contentInput]}
+            placeholder="¿Qué deseas publicar?"
+            multiline
+            value={contenido}
+            onChangeText={setContenido}
+          />
+        </View>
+
+        {/* Vista previa */}
+        <View style={styles.previewContainer}>
+          <Card style={styles.previewCard}>
+            <Card.Content>
+              <Text style={styles.previewTitle}>Vista previa</Text>
+
+              <View style={styles.previewMetadata}>
+                <Text style={styles.previewAuthor}>Autor: {user?._id}</Text>
+                <Text style={styles.previewDate}>{new Date().toLocaleDateString()}</Text>
+              </View>
+
+              <Chip style={styles.previewCategoryChip}>
+                <Text style={styles.previewCategoryText}>{tipo}</Text>
+              </Chip>
+
+              <Text style={styles.previewContent}>{contenido}</Text>
+            </Card.Content>
+          </Card>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+};
+
+export default CreatePostScreen;
 
 const styles = StyleSheet.create({
   container: {
@@ -406,17 +188,17 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     marginLeft: 8,
-    backgroundColor: COLORS.primary
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6
   },
   saveButtonText: {
     color: "white",
     fontWeight: "600"
   },
-  keyboardContainer: {
-    flex: 1
-  },
   formContainer: {
-    flex: 1,
+    flexGrow: 1,
     padding: 16
   },
   inputGroup: {
@@ -429,30 +211,14 @@ const styles = StyleSheet.create({
     marginBottom: 8
   },
   input: {
-    backgroundColor: COLORS.surface
+    backgroundColor: COLORS.surface,
+    borderRadius: 4,
+    padding: 10
   },
   contentInput: {
     backgroundColor: COLORS.surface,
-    minHeight: 120
-  },
-  inputError: {
-    borderColor: COLORS.error || "#ff0000",
-    borderWidth: 1
-  },
-  inputFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 4
-  },
-  errorText: {
-    color: COLORS.error || "#ff0000",
-    fontSize: 12,
-    flex: 1
-  },
-  characterCount: {
-    fontSize: 12,
-    color: COLORS.textSecondary
+    minHeight: 120,
+    textAlignVertical: "top"
   },
   categorySelector: {
     flexDirection: "row",
@@ -463,46 +229,22 @@ const styles = StyleSheet.create({
     borderColor: COLORS.textSecondary,
     borderRadius: 4,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 12,
     minHeight: 56
   },
   categorySelectorText: {
     fontSize: 16,
-    color: COLORS.text,
-    flex: 1
-  },
-  placeholderText: {
-    color: COLORS.textSecondary
-  },
-  imagePreview: {
-    width: "100%",
-    height: 200,
-    marginTop: 8,
-    borderRadius: 8
-  },
-  infoCard: {
-    backgroundColor: COLORS.surface,
-    marginTop: 20,
-    marginBottom: 20
-  },
-  infoTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.primary,
-    marginBottom: 8
-  },
-  infoText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    lineHeight: 20
+    color: COLORS.text
   },
   previewContainer: {
     flex: 1,
-    padding: 16
+    marginTop: 20
   },
   previewCard: {
     backgroundColor: COLORS.surface,
-    elevation: 4
+    elevation: 4,
+    borderRadius: 8,
+    padding: 16
   },
   previewTitle: {
     fontSize: 20,
@@ -534,15 +276,9 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 12
   },
-  previewImage: {
-    width: "100%",
-    height: 200,
-    marginBottom: 12,
-    borderRadius: 8
-  },
   previewContent: {
     fontSize: 16,
     lineHeight: 24,
     color: COLORS.text
   }
-})
+});
