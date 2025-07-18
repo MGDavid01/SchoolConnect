@@ -28,24 +28,35 @@ const CreatePostScreen = () => {
   const [tipoMenuVisible, setTipoMenuVisible] = useState(false);
   const [visibilidadMenuVisible, setVisibilidadMenuVisible] = useState(false);
 
-  const handlePublicar = async () => {
-    try {
-      const nuevaPublicacion = {
-        autorID: user?._id,
-        contenido,
-        tipo,
-        visibilidad,
-        fecha: new Date(),
-        activo: true
-      };
+const handlePublicar = async () => {
+  if (!contenido.trim()) {
+    alert("Debes escribir contenido para publicar.");
+    return;
+  }
 
-      await axios.post(`${API_URL}/publicaciones`, nuevaPublicacion);
+  try {
+    const nuevaPublicacion = {
+      autorID: user?._id,
+      contenido: contenido.trim(),
+      grupoID: user?.grupoID,
+      tipo,
+      visibilidad,
+      fecha: new Date(),
+      activo: true,
+    };
 
+    const response = await axios.post(`${API_URL}/api/publicaciones`, nuevaPublicacion);
+
+    if (response.status === 201) {
+      alert("Publicación creada con éxito.");
       navigation.goBack();
-    } catch (error) {
-      console.error("Error al publicar:", error);
     }
-  };
+  } catch (error) {
+    console.error("Error al publicar:", error);
+    alert("No se pudo publicar. Revisa tu conexión o el servidor.");
+  }
+};
+
 
   return (
     <KeyboardAvoidingView

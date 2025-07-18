@@ -169,6 +169,35 @@ router.post("/bulk", async (req, res) => {
   }
 });
 
+// Desactivar (eliminar) una publicación del usuario logueado
+router.patch("/:id", async (req, res) => {
+  const { id } = req.params;
+  const { userID } = req.body; // El frontend debe mandar el ID del usuario logueado
+
+  try {
+    const publicacion = await PublicacionModel.findById(id);
+
+    if (!publicacion) {
+      return res.status(404).json({ message: "Publicación no encontrada" });
+    }
+
+    // Validar que el usuario es el autor
+    if (publicacion.autorID.toString() !== userID) {
+      return res.status(403).json({ message: "No tienes permiso para eliminar esta publicación" });
+    }
+
+    // Soft delete: cambiar activo a false
+    publicacion.activo = false;
+    await publicacion.save();
+
+    res.json({ message: "Publicación eliminada correctamente" });
+  } catch (error) {
+    console.error("❌ Error al eliminar publicación:", error);
+    res.status(500).json({ message: "Error del servidor" });
+  }
+});
+
+
 
 
 export default router;

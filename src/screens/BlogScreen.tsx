@@ -34,9 +34,6 @@ interface BlogScreenProps {
   navigation: NavigationProp<any>;
 }
 
-
-
-
 const BlogScreen = ({ navigation }: BlogScreenProps) => {
   const { user } = useAuth();
   const [posts, setPosts] = useState<BlogPost[]>([  ]);
@@ -64,6 +61,8 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
 
       const comentariosRes = await axios.get(`${API_URL}/api/comentarios/conteo/todos`);
       const conteoComentariosData = comentariosRes.data;
+
+
       setConteoComentarios(conteoComentariosData);
 
       const usuarioID = await AsyncStorage.getItem("correo");
@@ -220,10 +219,6 @@ const handleCommentPress = async (post: BlogPost) => {
   }
 };
 
-
-
-
-
 const handleAddComment = async () => {
   
   if (!newComment.trim()) return;
@@ -274,9 +269,36 @@ const handleAddComment = async () => {
 };
 
 
+
+
   const handleExpandPost = (postId: string) => {
     setExpandedPostId(expandedPostId === postId ? null : postId);
   };
+
+  //Para el modal de confirmacion de eliminación de una publicacion hecha por un usuario
+      const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+      const [selectedPostToDelete, setSelectedPostToDelete] = useState<string | null>(null);
+
+      const handleEliminar = (postId: string) => {
+        setSelectedPostToDelete(postId);
+        setDeleteModalVisible(true);
+      };
+
+      const confirmDeletePost = async () => {
+        if (!selectedPostToDelete) return;
+
+        try {
+          await axios.patch(`${API_URL}/api/publicaciones/${selectedPostToDelete}`, { userID: user!._id });
+
+          // Actualizar lista localmente
+          setPosts((prev) => prev.filter((p) => p.id !== selectedPostToDelete));
+
+          setDeleteModalVisible(false);
+          setSelectedPostToDelete(null);
+        } catch (error) {
+          console.error("Error al eliminar publicación:", error);
+        }
+      };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -290,23 +312,42 @@ const handleAddComment = async () => {
       </View>
 
       <ScrollView>
-        {filteredPosts.map((post) => (
-          <BlogCard
-            key={post.id}
-            post={post}
-            expanded={expandedPostId === post.id}
-            userReaction={userReactions[post.id]}
-            onExpand={handleExpandPost}
-            onReact={handleReaction}
-            onComment={handleCommentPress}
-              onViewMore={() => {
-                // lógica que quieras para ver más (puede ser navegar a detalle)
-              }}
-              comentarioCount={conteoComentarios[post.id] || 0}
-          />
-        ))}
-      </ScrollView>
+  {filteredPosts.map((post) => (
+    <View key={post.id}>
+      <BlogCard
+        post={post}
+        expanded={expandedPostId === post.id}
+        userReaction={userReactions[post.id]}
+        onExpand={handleExpandPost}
+        onReact={handleReaction}
+        onComment={handleCommentPress}
+        onViewMore={() => {
+          // lógica que quieras para ver más
+        }}
+        comentarioCount={conteoComentarios[post.id] || 0}
+      />
 
+      {/* Botón de eliminar (solo si es del usuario actual) */}
+      {post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}` && (
+      <TouchableOpacity
+          onPress={() => handleEliminar(post.id)}
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            backgroundColor: "rgba(255,0,0,0.8)",
+            borderRadius: 20,
+            padding: 10,
+            zIndex: 10
+          }}
+        >
+          <Text style={{ color: "white", fontWeight: "bold", fontSize: 12 }}>Eliminar</Text>
+        </TouchableOpacity>
+    )}
+
+    </View>
+  ))}
+</ScrollView>
       <FAB
         icon="plus"
         style={styles.fab}
@@ -378,6 +419,33 @@ const handleAddComment = async () => {
           </View>
         </View>
       </Modal>
+      <Modal
+  visible={deleteModalVisible}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setDeleteModalVisible(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.confirmModal}>
+      <Text style={styles.modalTitle}>¿Eliminar publicación?</Text>
+      <Text style={styles.modalText}>Esta acción no se puede deshacer.</Text>
+      <View style={styles.modalActions}>
+        <TouchableOpacity
+          style={[styles.modalButton, { backgroundColor: COLORS.textSecondary }]}
+          onPress={() => setDeleteModalVisible(false)}
+        >
+          <Text style={styles.modalButtonText}>Cancelar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.modalButton, { backgroundColor: COLORS.error }]}
+          onPress={confirmDeletePost}
+        >
+          <Text style={styles.modalButtonText}>Eliminar</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>
     </SafeAreaView>
   );
 };
@@ -557,6 +625,43 @@ const styles = StyleSheet.create({
     marginRight: 8,
     maxHeight: 100,
   },
+  modalOverlay: {
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: "rgba(0,0,0,0.5)"
+},
+confirmModal: {
+  backgroundColor: COLORS.surface,
+  padding: 20,
+  borderRadius: 10,
+  width: "80%",
+  alignItems: "center"
+},
+//Diseño del modal de confirmacion de eliminacion de una publicacion
+modalText: {
+  fontSize: 14,
+  color: COLORS.textSecondary,
+  textAlign: "center",
+  marginBottom: 20
+},
+modalActions: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  width: "100%"
+},
+modalButton: {
+  flex: 1,
+  paddingVertical: 10,
+  marginHorizontal: 5,
+  borderRadius: 6,
+  alignItems: "center"
+},
+modalButtonText: {
+  color: "white",
+  fontWeight: "600"
+}
+
 });
 
 export default BlogScreen;
