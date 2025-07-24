@@ -172,15 +172,22 @@ export default CreatePostScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background
+    backgroundColor: COLORS.background,
+    paddingBottom: 8
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    backgroundColor: COLORS.surface
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.textSecondary,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4
   },
   headerLeft: {
     flexDirection: "row",
@@ -188,60 +195,71 @@ const styles = StyleSheet.create({
     flex: 1
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "700",
     color: COLORS.text,
-    marginLeft: 8
+    marginLeft: 10
   },
   headerRight: {
     flexDirection: "row",
     alignItems: "center"
   },
   saveButton: {
-    marginLeft: 8,
+    marginLeft: 12,
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    elevation: 2
   },
   saveButtonText: {
     color: "white",
-    fontWeight: "600"
+    fontWeight: "700",
+    fontSize: 14
   },
   formContainer: {
     flexGrow: 1,
-    padding: 16
+    padding: 20
   },
   inputGroup: {
-    marginBottom: 20
+    marginBottom: 24
   },
   label: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
     color: COLORS.text,
-    marginBottom: 8
+    marginBottom: 6
   },
   input: {
     backgroundColor: COLORS.surface,
-    borderRadius: 4,
-    padding: 10
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: COLORS.textSecondary
   },
   contentInput: {
     backgroundColor: COLORS.surface,
-    minHeight: 120,
-    textAlignVertical: "top"
+    minHeight: 130,
+    textAlignVertical: "top",
+    borderRadius: 10,
+    padding: 14,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: COLORS.textSecondary
   },
   categorySelector: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    borderWidth: 1.2,
     borderColor: COLORS.textSecondary,
-    borderRadius: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    minHeight: 56
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 58
   },
   categorySelectorText: {
     fontSize: 16,
@@ -249,25 +267,28 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     flex: 1,
-    marginTop: 20
+    marginTop: 24
   },
   previewCard: {
     backgroundColor: COLORS.surface,
-    elevation: 4,
-    borderRadius: 8,
-    padding: 16
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    borderRadius: 16,
+    padding: 20
   },
   previewTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontWeight: "800",
     color: COLORS.primary,
-    marginBottom: 8
+    marginBottom: 10
   },
   previewMetadata: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12
+    marginBottom: 14
   },
   previewAuthor: {
     fontSize: 14,
@@ -280,16 +301,21 @@ const styles = StyleSheet.create({
   },
   previewCategoryChip: {
     alignSelf: "flex-start",
-    marginBottom: 12,
-    backgroundColor: COLORS.primary
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
+    backgroundColor: COLORS.primary,
+    marginBottom: 12
   },
   previewCategoryText: {
     color: "white",
-    fontSize: 12
+    fontSize: 13,
+    fontWeight: "600"
   },
   previewContent: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 26,
     color: COLORS.text
   }
 });
+

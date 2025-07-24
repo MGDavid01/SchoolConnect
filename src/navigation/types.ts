@@ -94,6 +94,8 @@ export interface Comment {
 }
 
 export interface BlogPost {
+  categoria: "todos" | "grupo";
+  tipo: any;
   id: string;
   title: string;
   content: string;
@@ -104,6 +106,12 @@ export interface BlogPost {
   dislikes: number;
   comments: Comment[]; // 👈 Asegúrate de que esto exista
 }
+
+export type BlogStackParamList = {
+  BlogList: undefined;
+  CreatePost: undefined;
+  EditPost: { post: BlogPost };
+};
 
 
 

@@ -34,6 +34,10 @@ interface BlogScreenProps {
   navigation: NavigationProp<any>;
 }
 
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
+
+
 const BlogScreen = ({ navigation }: BlogScreenProps) => {
   const { user } = useAuth();
   const [posts, setPosts] = useState<BlogPost[]>([  ]);
@@ -50,23 +54,21 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
           console.error("❌ Error al cargar comentarios", error);
         }
       };
-  useEffect(() => {
-  const fetchPosts = async () => {
+
+      
+ const fetchPosts = async () => {
     try {
       const publicacionesRes = await axios.get(`${API_URL}/api/publicaciones`);
       const publicaciones = publicacionesRes.data;
-        
+
       const conteoRes = await axios.get(`${API_URL}/api/reacciones/conteo`);
       const conteos = conteoRes.data;
 
       const comentariosRes = await axios.get(`${API_URL}/api/comentarios/conteo/todos`);
       const conteoComentariosData = comentariosRes.data;
-
-
       setConteoComentarios(conteoComentariosData);
 
       const usuarioID = await AsyncStorage.getItem("correo");
-      console.log("📩 usuarioID recuperado de AsyncStorage:", usuarioID);
       let reacciones: Record<string, "like" | "dislike"> = {};
       if (usuarioID) {
         const reaccionRes = await axios.get(`${API_URL}/api/reacciones/${usuarioID}`);
@@ -86,7 +88,6 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
         dislikes: conteos[item._id]?.dislike || 0,
         comments: [],
         type: "blog",
-        
       }));
 
       setPosts(parsedPosts);
@@ -95,19 +96,17 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
     }
   };
 
-  fetchPosts();
-
-  const handler = () => {
+  // Ejecuta fetchPosts al montar el componente
+  useEffect(() => {
     fetchPosts();
-  };
-
-  eventBus.on("reactionChanged", handler);
-
-  return () => {
-    eventBus.off("reactionChanged", handler);
-  };
   }, []);
 
+  // Ejecuta fetchPosts cuando se regresa a la pantalla
+  useFocusEffect(
+    useCallback(() => {
+      fetchPosts();
+    }, [])
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const [commentModalVisible, setCommentModalVisible] = useState(false);
@@ -268,7 +267,11 @@ const handleAddComment = async () => {
   }
 };
 
-
+  const actualizarPost = (postActualizado: BlogPost) => {
+    setPosts((prev) =>
+      prev.map((p) => (p.id === postActualizado.id ? postActualizado : p))
+    );
+  };
 
 
   const handleExpandPost = (postId: string) => {
@@ -288,7 +291,7 @@ const handleAddComment = async () => {
         if (!selectedPostToDelete) return;
 
         try {
-          await axios.patch(`${API_URL}/api/publicaciones/${selectedPostToDelete}`, { userID: user!._id });
+          await axios.patch(`${API_URL}/api/publicaciones/${selectedPostToDelete}`, { userID: user!._id, accion: "eliminar"});
 
           // Actualizar lista localmente
           setPosts((prev) => prev.filter((p) => p.id !== selectedPostToDelete));
@@ -329,7 +332,7 @@ const handleAddComment = async () => {
 
       {/* Botón de eliminar (solo si es del usuario actual) */}
       {post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}` && (
-      <TouchableOpacity
+      <><TouchableOpacity
           onPress={() => handleEliminar(post.id)}
           style={{
             position: "absolute",
@@ -342,7 +345,24 @@ const handleAddComment = async () => {
           }}
         >
           <Text style={{ color: "white", fontWeight: "bold", fontSize: 12 }}>Eliminar</Text>
+
         </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
+          style={{
+             position: "absolute",
+            top: 10,
+            right: 80,
+            backgroundColor: "rgba(0,123,255,0.8)", // Azul semitransparente
+            borderRadius: 20,
+            padding: 10,
+            zIndex: 10
+          }}
+        >
+            <Text style={{ color: "white", fontWeight: "bold", fontSize: 12 }}>
+              Editar
+            </Text>
+          </TouchableOpacity></>
     )}
 
     </View>

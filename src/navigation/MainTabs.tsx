@@ -14,12 +14,15 @@ import TabTransition from "../components/TabTransition";
 import { COLORS } from "../theme/theme";
 import { Scholarship } from '../navigation/types'; // Asegúrate de que la ruta sea correcta
 import { NewsStackParamList } from './types';
+import EditPostScreen from "../screens/EditPostScreen";
 
 import RoleListScreen from "../screens/RoleListScreen";
 import RolesNavigator from "./RolesNavigator";
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthContext } from "../contexts/AuthContext";
+
+
 // Tipos para los parámetros de las rutas
 export type RootTabParamList = {
   Noticias: undefined;
@@ -33,6 +36,10 @@ export type RootTabParamList = {
 export type BlogStackParamList = {
   BlogList: undefined;
   CreatePost: undefined;
+  EditPost: {
+    post: BlogPost;
+    onSave: (updatedPost: BlogPost) => void; // <-- AÑADIDO
+  };
 };
 
 export type ScholarshipStackParamList = {
@@ -45,11 +52,14 @@ export type CalendarStackParamList = {
   CalendarMain: undefined;
 };
 
+// Justo en la parte donde defines los tipos de navegación
 export type ProfileStackParamList = {
   ProfileMain: undefined;
+  EditPost: {
+    post: BlogPost;
+    onSave: (updatedPost: BlogPost) => void;
+  };
 };
-
-
 
 
 
@@ -96,6 +106,9 @@ const NewsNavigator: React.FC<NavigatorProps> = ({ active }) => {
   );
 };
 
+import { BlogPost } from "../types/blog";
+
+
 const BlogNavigator: React.FC<NavigatorProps> = ({ active }) => {
   return (
     <TabTransition active={active}>
@@ -107,6 +120,18 @@ const BlogNavigator: React.FC<NavigatorProps> = ({ active }) => {
           options={{
             headerShown: true,
             headerTitle: "Nueva Publicación",
+            headerStyle: {
+              backgroundColor: COLORS.primary
+            },
+            headerTintColor: COLORS.surface
+          }}
+        />
+        <BlogStack.Screen 
+          name="EditPost" 
+          component={EditPostScreen}
+          options={{
+            headerShown: true,
+            headerTitle: "Editar Publicación",
             headerStyle: {
               backgroundColor: COLORS.primary
             },
@@ -159,10 +184,25 @@ const ProfileNavigator: React.FC<NavigatorProps> = ({ active }) => {
     <TabTransition active={active}>
       <ProfileStack.Navigator screenOptions={commonStackOptions}>
         <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
+        
+        {/* Agregamos EditPost aquí para que funcione desde la pestaña Perfil */}
+        <ProfileStack.Screen
+          name="EditPost"
+          component={EditPostScreen}
+          options={{
+            headerShown: true,
+            headerTitle: "Editar Publicación",
+            headerStyle: {
+              backgroundColor: COLORS.primary,
+            },
+            headerTintColor: COLORS.surface,
+          }}
+        />
       </ProfileStack.Navigator>
     </TabTransition>
   );
 };
+
 
 const MainTabs: React.FC = () => {
   const [activeTab, setActiveTab] = useState<keyof RootTabParamList>("Noticias");

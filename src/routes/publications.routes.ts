@@ -3,6 +3,8 @@ import { PublicacionModel } from "../models/Publication";
 import { ReaccionModel } from "../models/Reaccion";
 import { UserModel } from "../models/User";
 import mongoose from "mongoose";
+import {ComentarioModel} from "../models/Comentario";
+
 
 const router = express.Router();
 
@@ -169,33 +171,64 @@ router.post("/bulk", async (req, res) => {
   }
 });
 
-// Desactivar (eliminar) una publicación del usuario logueado
 router.patch("/:id", async (req, res) => {
   const { id } = req.params;
-  const { userID } = req.body; // El frontend debe mandar el ID del usuario logueado
+  const { userID, contenido, tipo, visibilidad, accion } = req.body;
 
   try {
     const publicacion = await PublicacionModel.findById(id);
-
     if (!publicacion) {
       return res.status(404).json({ message: "Publicación no encontrada" });
     }
 
-    // Validar que el usuario es el autor
     if (publicacion.autorID.toString() !== userID) {
-      return res.status(403).json({ message: "No tienes permiso para eliminar esta publicación" });
+      return res.status(403).json({ message: "No tienes permiso para modificar esta publicación" });
     }
 
-    // Soft delete: cambiar activo a false
-    publicacion.activo = false;
-    await publicacion.save();
+    if (accion === "eliminar") {
+      publicacion.activo = false;
+      await publicacion.save();
+      return res.json({ message: "Publicación eliminada correctamente" });
+    }
 
-    res.json({ message: "Publicación eliminada correctamente" });
+    // Si no es eliminar, es editar
+    if (contenido !== undefined) publicacion.contenido = contenido;
+    if (tipo !== undefined) publicacion.tipo = tipo;
+    if (visibilidad !== undefined) publicacion.visibilidad = visibilidad;
+
+    await publicacion.save();
+    res.json({ message: "Publicación actualizada correctamente", publicacion });
   } catch (error) {
-    console.error("❌ Error al eliminar publicación:", error);
+    console.error("Error al modificar publicación:", error);
     res.status(500).json({ message: "Error del servidor" });
   }
 });
+
+
+// RUTA NUEVA: Obtener publicaciones donde un usuario comentó
+router.get("/comentadas/:usuarioID", async (req, res) => {
+  const { usuarioID } = req.params;
+
+  try {
+    const comentariosUsuario = await ComentarioModel.find({ usuarioID }).select("publicacionID");
+
+    const publicacionesIDs = comentariosUsuario.map(c => c.publicacionID);
+
+    const publicaciones = await PublicacionModel.find({
+      _id: { $in: publicacionesIDs },
+      activo: true, 
+    }).populate("autorID", "nombre apellidoPaterno apellidoMaterno");
+
+    res.json(publicaciones);
+  } catch (error) {
+    console.error("❌ Error al obtener publicaciones comentadas:", error);
+    res.status(500).json({ message: "Error del servidor" });
+  }
+});
+
+
+
+
 
 
 
