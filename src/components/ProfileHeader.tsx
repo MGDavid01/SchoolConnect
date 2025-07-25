@@ -1,7 +1,8 @@
-import React, { useState } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native"
-import { COLORS } from "../theme/theme"
-import type { UserType } from "../contexts/AuthContext"
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Easing } from "react-native";
+import { COLORS } from "../theme/theme";
+import type { UserType } from "../contexts/AuthContext";
+import { Avatar, IconButton } from "react-native-paper";
 
 type ProfileHeaderProps = {
   user?: UserType;
@@ -12,34 +13,37 @@ type ProfileHeaderProps = {
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   user,
   onDetailsPress,
-  onLogoutPress
+  onLogoutPress,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [scaleAnim] = useState(new Animated.Value(0.9));
 
   const handleOpenModal = () => {
     setModalVisible(true);
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, friction: 6, useNativeDriver: true }),
+    ]).start();
   };
 
   const handleCloseModal = () => {
-    setModalVisible(false);
+    Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
+      setModalVisible(false);
+      scaleAnim.setValue(0.9);
+    });
   };
+
+  const avatarLetter = user?.nombre?.charAt(0).toUpperCase() || "?";
 
   return (
     <>
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={handleCloseModal}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
+      <Modal animationType="none" transparent={true} visible={modalVisible} onRequestClose={handleCloseModal}>
+        <Animated.View style={[styles.modalContainer, { opacity: fadeAnim }]}>
+          <Animated.View style={[styles.modalContent, { transform: [{ scale: scaleAnim }] }]}>
             <Text style={styles.modalText}>¿Estás seguro que deseas cerrar sesión?</Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={handleCloseModal}
-              >
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={handleCloseModal}>
                 <Text style={styles.modalButtonText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -49,31 +53,43 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
                   onLogoutPress();
                 }}
               >
-                <Text style={styles.modalButtonText}>Confirmar</Text>
+                <Text style={styles.modalButtonText}>Salir</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </Animated.View>
+        </Animated.View>
       </Modal>
 
       <View style={styles.profileHeader}>
-        <View style={styles.profileImage} />
-        <View style={styles.profileInfo}>
-          <Text style={styles.userName}>{user?.nombre || ""}</Text>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.detailsButton}
-              onPress={onDetailsPress}
-            >
-              <Text style={styles.detailsButtonText}>Ver detalles</Text>
-            </TouchableOpacity>
+        {/* Avatar */}
+        <Avatar.Text
+          size={70}
+          label={avatarLetter}
+          style={{ backgroundColor: COLORS.primary }}
+          color="white"
+        />
 
-            <TouchableOpacity
-              style={styles.logoutButton}
+        {/* Info del usuario */}
+        <View style={styles.profileInfo}>
+          <Text style={styles.userName}>{user?.nombre || "Usuario"}</Text>
+
+          <View style={styles.actionsRow}>
+            {/* Botón Detalles */}
+            <IconButton
+              icon="account-circle"
+              iconColor={COLORS.primary}
+              size={26}
+              style={styles.actionIcon}
+              onPress={onDetailsPress}
+            />
+            {/* Botón Cerrar Sesión */}
+            <IconButton
+              icon="logout"
+              iconColor={COLORS.error}
+              size={26}
+              style={styles.actionIcon}
               onPress={handleOpenModal}
-            >
-              <Text style={styles.logoutButtonText}>Cerrar sesión</Text>
-            </TouchableOpacity>
+            />
           </View>
         </View>
       </View>
@@ -82,83 +98,70 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({
 };
 
 const styles = StyleSheet.create({
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
   profileHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 0,
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.background,
-    marginRight: 20,
+    padding: 16,
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 4,
   },
   profileInfo: {
     flex: 1,
-    alignItems: 'flex-start',
-    paddingLeft: 15,
+    marginLeft: 16,
   },
   userName: {
     fontSize: 20,
     fontWeight: "bold",
     color: COLORS.text,
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  detailsButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    alignSelf: "flex-start",
-    marginBottom: 10,
+  actionsRow: {
+    flexDirection: "row",
+    gap: 12,
   },
-  detailsButtonText: {
-    color: COLORS.surface,
-    fontSize: 14,
+  actionIcon: {
+    backgroundColor: COLORS.background,
+    borderRadius: 30,
+    marginHorizontal: 4,
   },
-  logoutButton: {
-    backgroundColor: COLORS.error,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-    justifyContent: 'flex-start',
-  },
-  logoutButtonText: {
-    color: COLORS.surface,
-    fontSize: 14,
-    textAlign: 'left',
-  },
+  // Modal
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
     backgroundColor: COLORS.surface,
-    padding: 20,
-    borderRadius: 10,
-    width: '80%',
+    padding: 24,
+    borderRadius: 16,
+    width: "80%",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
   },
   modalText: {
     fontSize: 16,
+    color: COLORS.textSecondary,
+    textAlign: "center",
     marginBottom: 20,
-    textAlign: 'center',
   },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
   },
   modalButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 5,
+    flex: 1,
+    paddingVertical: 12,
+    marginHorizontal: 6,
+    borderRadius: 10,
+    alignItems: "center",
   },
   cancelButton: {
     backgroundColor: COLORS.secondary,
@@ -167,8 +170,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.error,
   },
   modalButtonText: {
-    color: COLORS.surface,
-    fontSize: 14,
+    color: "white",
+    fontWeight: "600",
   },
 });
 

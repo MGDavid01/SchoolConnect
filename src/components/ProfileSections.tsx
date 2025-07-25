@@ -9,6 +9,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  Easing 
 } from "react-native";
 import { Searchbar, IconButton } from "react-native-paper";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -19,6 +21,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../contexts/AuthContext";
 import { BlogPost } from "../types/blog";
+import CommentCard from "./CommentCard";
 
 
 type SectionKey = "publicaciones" | "comentarios" | "guardados" | "likes";
@@ -335,6 +338,30 @@ const confirmDeletePost = async () => {
     { key: "likes", label: "Likes" },
   ];
 
+        const scaleAnim = useRef(new Animated.Value(0.8)).current;  // escala inicial
+  const opacityAnim = useRef(new Animated.Value(0)).current;  // opacidad inicial
+  useEffect(() => {
+    if (deleteModalVisible) {
+      Animated.parallel([
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 250, // un poco más lento para suavidad
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 250,
+          easing: Easing.out(Easing.ease), // suavizado
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Al cerrar, se restablecen valores
+      opacityAnim.setValue(0);
+      scaleAnim.setValue(0.9); // empieza un poco más grande para cuando se abra de nuevo
+    }
+  }, [deleteModalVisible]);
+
   return (
     <View style={styles.sectionsContainer}>
       {/* Tabs */}
@@ -365,25 +392,22 @@ const confirmDeletePost = async () => {
         {activeSection === "guardados" ? (
           <Text style={styles.emptyText}>Esta sección está en construcción.</Text>
         ) : activeSection === "comentarios" ? (
-          userComments.length === 0 ? (
-            <Text style={styles.emptyText}>No has hecho comentarios.</Text>
-          ) : (
-            <ScrollView>
-              {userComments.map((comment) => (
-                <View key={comment._id} style={styles.commentItem}>
-                  <Text style={styles.commentAuthor}>
-                    En publicación: {comment.publicacion?.titulo || "Sin título"}
-                  </Text>
-                  <Text style={styles.commentText}>{comment.contenido}</Text>
-                  <Text style={styles.commentDate}>
-                    {new Date(comment.fecha).toLocaleDateString()}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          )
-        ) : posts.length === 0 ? (
-          <Text style={styles.emptyText}>No hay publicaciones.</Text>
+            userComments.length === 0 ? (
+              <Text style={styles.emptyText}>No has hecho ningún comentario aún.</Text>
+            ) : (
+              <ScrollView>
+                {userComments.map((comment) => (
+                  <CommentCard
+                    key={comment._id}
+                    author={comment.autorNombre}
+                    content={comment.contenido}
+                    date={new Date(comment.fecha).toISOString().split("T")[0]}
+                  />
+                ))}
+              </ScrollView>
+            )
+          ) : posts.length === 0 ? (
+            <Text style={styles.emptyText}>No hay publicaciones.</Text>
         ) : (
           <ScrollView>
             {posts.map((post) => (
@@ -405,24 +429,22 @@ const confirmDeletePost = async () => {
                 {post.author ===
                   `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}` && (
                   <>
-                    <TouchableOpacity
-                      onPress={() => handleEliminar(post.id)}
-                      style={styles.deleteButton}
-                    >
-                      <Text style={styles.buttonText}>Eliminar</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => {
-                        navigation.navigate("EditPost", {
-                          post,
-                          onSave: actualizarPost,
-                        });
-                      }}
-                      style={styles.editButton}
-                    >
-                      <Text style={styles.buttonText}>Editar</Text>
-                    </TouchableOpacity>
+                   <View style={styles.floatingButtons}>
+                           <IconButton
+                             icon="pencil"
+                             size={20}
+                             onPress={() => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
+                             style={[styles.floatingBtn, styles.editIcon]}
+                             iconColor="white"
+                           />
+                           <IconButton
+                             icon="delete"
+                             size={20}
+                             onPress={() => handleEliminar(post.id)}
+                             style={[styles.floatingBtn, styles.deleteIcon]}
+                             iconColor="white"
+                           />
+                         </View>
                   </>
                 )}
               </View>
@@ -500,26 +522,37 @@ const confirmDeletePost = async () => {
         animationType="fade"
         onRequestClose={() => setDeleteModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.confirmModal}>
-            <Text style={styles.modalTitle}>¿Eliminar publicación?</Text>
-            <Text style={styles.modalText}>Esta acción no se puede deshacer.</Text>
-            <View style={styles.modalActions}>
+       <View style={styles.modalOverlay}>
+           <Animated.View
+             style={[
+               styles.confirmModal,
+               {
+                 opacity: opacityAnim,
+                 transform: [{ scale: scaleAnim }],
+               },
+             ]}
+           >
+           <View style={styles.confirmModal}>
+             <Text style={styles.modalTitle}>¿Eliminar publicación?</Text>
+             <Text style={styles.modalText}>Esta acción no se puede deshacer.</Text>
+             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: COLORS.textSecondary }]}
-                onPress={() => setDeleteModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: COLORS.error }]}
-                onPress={confirmDeletePost}
-              >
-                <Text style={styles.modalButtonText}>Eliminar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+                 style={[styles.modalButton, { backgroundColor: COLORS.textSecondary }]}
+                 onPress={() => setDeleteModalVisible(false)}
+               >
+                 <Text style={styles.modalButtonText}>Cancelar</Text>
+               </TouchableOpacity>
+       
+               <TouchableOpacity
+                 style={[styles.modalButton, { backgroundColor: COLORS.error }]}
+                 onPress={confirmDeletePost}
+               >
+                 <Text style={styles.modalButtonText}>Eliminar</Text>
+               </TouchableOpacity>
+             </View>
+           </View>
+           </Animated.View>
+         </View>
       </Modal>
     </View>
   );
@@ -597,109 +630,156 @@ const styles = StyleSheet.create({
   },
 
   // Modal comentarios
-  modalContainer: {
+   modalContainer: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    paddingHorizontal: 20,
+    justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: COLORS.surface,
-    borderRadius: 8,
-    maxHeight: "80%",
-    paddingVertical: 10,
-    paddingHorizontal: 15,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: "80%",
+    paddingTop: 8,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.1)",
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
     color: COLORS.primary,
   },
   commentsList: {
-    maxHeight: 300,
-    marginBottom: 10,
+    flex: 1,
+    padding: 16,
   },
   commentItem: {
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.background,
-    paddingVertical: 8,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
   },
   commentAuthor: {
     fontWeight: "bold",
-    color: COLORS.primary,
-    marginBottom: 2,
+    fontSize: 14,
+    color: COLORS.text,
+    marginBottom: 4,
   },
   commentText: {
-    color: COLORS.textSecondary,
     fontSize: 14,
-    marginBottom: 4,
+    color: COLORS.text,
+    marginBottom: 8,
   },
   commentMeta: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   commentDate: {
     fontSize: 12,
     color: COLORS.textSecondary,
   },
-
+  commentLike: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  likeCount: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginLeft: -4,
+  },
   commentInputContainer: {
     flexDirection: "row",
     alignItems: "center",
+    padding: 8,
     borderTopWidth: 1,
-    borderTopColor: COLORS.background,
-    paddingTop: 5,
+    borderTopColor: "rgba(0,0,0,0.1)",
+    backgroundColor: COLORS.surface,
   },
   commentInput: {
     flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
     backgroundColor: COLORS.background,
     borderRadius: 20,
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    fontSize: 14,
-    color: COLORS.text,
+    marginRight: 8,
+    maxHeight: 100,
   },
+//Diseño del modal de confirmacion de eliminacion de una publicacion
+modalText: {
+  fontSize: 16,
+  color: COLORS.text,
+  textAlign: "center",
+  marginBottom: 20,
+  lineHeight: 22,
+  fontWeight: "500",
+},
 
-  // Modal confirmación eliminar
+modalActions: {
+  flexDirection: "row",
+  justifyContent: "space-evenly",
+  width: "100%",
+  marginTop: 10,
+},
+
+modalButton: {
+  flex: 1,
+  paddingVertical: 12,
+  marginHorizontal: 8,
+  borderRadius: 30, // más redondeado
+  alignItems: "center",
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.15,
+  shadowRadius: 3,
+  elevation: 3,
+},
+
+modalButtonText: {
+  color: "white",
+  fontWeight: "bold",
+  fontSize: 15,
+  letterSpacing: 0.5,
+},
   modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  confirmModal: {
-    backgroundColor: COLORS.surface,
-    padding: 20,
-    borderRadius: 8,
-    width: "100%",
-    maxWidth: 350,
-  },
-  modalText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginVertical: 10,
-  },
-  modalActions: {
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: "rgba(0,0,0,0.5)"
+},
+confirmModal: {
+  backgroundColor: COLORS.surface,
+  padding: 20,
+  borderRadius: 10,
+  width: "80%",
+  alignItems: "center"
+},
+  
+//diseño para los botones de eliminar y modificar
+floatingButtons: {
+    position: "absolute",
+    top: 8,
+    right: 8,
     flexDirection: "row",
-    justifyContent: "flex-end",
+    gap: 8, // separa los iconos
+    zIndex: 10,
+    paddingRight: 15,
   },
-  modalButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 6,
-    marginLeft: 10,
+  floatingBtn: {
+    backgroundColor: "rgba(0,0,0,0.4)", // fondo translúcido neutro
+    borderRadius: 20,
+    elevation: 3,
   },
-  modalButtonText: {
-    color: "white",
-    fontWeight: "bold",
+  editIcon: {
+    backgroundColor: "rgba(0,122,255,0.85)", // azul sutil
+  },
+  deleteIcon: {
+    backgroundColor: "rgba(255,77,77,0.85)", // rojo sutil
   },
 });

@@ -8,6 +8,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  Easing 
 } from "react-native";
 import {
   Card,
@@ -36,7 +38,6 @@ interface BlogScreenProps {
 
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
-
 
 const BlogScreen = ({ navigation }: BlogScreenProps) => {
   const { user } = useAuth();
@@ -303,6 +304,30 @@ const handleAddComment = async () => {
         }
       };
 
+      const scaleAnim = useRef(new Animated.Value(0.8)).current;  // escala inicial
+const opacityAnim = useRef(new Animated.Value(0)).current;  // opacidad inicial
+useEffect(() => {
+  if (deleteModalVisible) {
+    Animated.parallel([
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 250, // un poco más lento para suavidad
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 250,
+        easing: Easing.out(Easing.ease), // suavizado
+        useNativeDriver: true,
+      }),
+    ]).start();
+  } else {
+    // Al cerrar, se restablecen valores
+    opacityAnim.setValue(0);
+    scaleAnim.setValue(0.9); // empieza un poco más grande para cuando se abra de nuevo
+  }
+}, [deleteModalVisible]);
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.searchContainer}>
@@ -332,37 +357,24 @@ const handleAddComment = async () => {
 
       {/* Botón de eliminar (solo si es del usuario actual) */}
       {post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}` && (
-      <><TouchableOpacity
-          onPress={() => handleEliminar(post.id)}
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            backgroundColor: "rgba(255,0,0,0.8)",
-            borderRadius: 20,
-            padding: 10,
-            zIndex: 10
-          }}
-        >
-          <Text style={{ color: "white", fontWeight: "bold", fontSize: 12 }}>Eliminar</Text>
-
-        </TouchableOpacity>
-        <TouchableOpacity
+      <>
+      <View style={styles.floatingButtons}>
+        <IconButton
+          icon="pencil"
+          size={20}
           onPress={() => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
-          style={{
-             position: "absolute",
-            top: 10,
-            right: 80,
-            backgroundColor: "rgba(0,123,255,0.8)", // Azul semitransparente
-            borderRadius: 20,
-            padding: 10,
-            zIndex: 10
-          }}
-        >
-            <Text style={{ color: "white", fontWeight: "bold", fontSize: 12 }}>
-              Editar
-            </Text>
-          </TouchableOpacity></>
+          style={[styles.floatingBtn, styles.editIcon]}
+          iconColor="white"
+        />
+        <IconButton
+          icon="delete"
+          size={20}
+          onPress={() => handleEliminar(post.id)}
+          style={[styles.floatingBtn, styles.deleteIcon]}
+          iconColor="white"
+        />
+      </View>
+    </>
     )}
 
     </View>
@@ -446,16 +458,26 @@ const handleAddComment = async () => {
   onRequestClose={() => setDeleteModalVisible(false)}
 >
   <View style={styles.modalOverlay}>
+    <Animated.View
+      style={[
+        styles.confirmModal,
+        {
+          opacity: opacityAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
     <View style={styles.confirmModal}>
       <Text style={styles.modalTitle}>¿Eliminar publicación?</Text>
       <Text style={styles.modalText}>Esta acción no se puede deshacer.</Text>
       <View style={styles.modalActions}>
-        <TouchableOpacity
+       <TouchableOpacity
           style={[styles.modalButton, { backgroundColor: COLORS.textSecondary }]}
           onPress={() => setDeleteModalVisible(false)}
         >
           <Text style={styles.modalButtonText}>Cancelar</Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={[styles.modalButton, { backgroundColor: COLORS.error }]}
           onPress={confirmDeletePost}
@@ -464,6 +486,7 @@ const handleAddComment = async () => {
         </TouchableOpacity>
       </View>
     </View>
+    </Animated.View>
   </View>
 </Modal>
     </SafeAreaView>
@@ -585,7 +608,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(0,0,0,0.1)",
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
     color: COLORS.primary,
   },
@@ -660,27 +683,63 @@ confirmModal: {
 },
 //Diseño del modal de confirmacion de eliminacion de una publicacion
 modalText: {
-  fontSize: 14,
-  color: COLORS.textSecondary,
+  fontSize: 16,
+  color: COLORS.text,
   textAlign: "center",
-  marginBottom: 20
+  marginBottom: 20,
+  lineHeight: 22,
+  fontWeight: "500",
 },
+
 modalActions: {
   flexDirection: "row",
-  justifyContent: "space-between",
-  width: "100%"
+  justifyContent: "space-evenly",
+  width: "100%",
+  marginTop: 10,
 },
+
 modalButton: {
   flex: 1,
-  paddingVertical: 10,
-  marginHorizontal: 5,
-  borderRadius: 6,
-  alignItems: "center"
+  paddingVertical: 12,
+  marginHorizontal: 8,
+  borderRadius: 30, // más redondeado
+  alignItems: "center",
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.15,
+  shadowRadius: 3,
+  elevation: 3,
 },
+
 modalButtonText: {
   color: "white",
-  fontWeight: "600"
-}
+  fontWeight: "bold",
+  fontSize: 15,
+  letterSpacing: 0.5,
+},
+
+
+//diseño para los botones de eliminar y modificar
+floatingButtons: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    flexDirection: "row",
+    gap: 8, // separa los iconos
+    zIndex: 10,
+    paddingRight: 15,
+  },
+  floatingBtn: {
+    backgroundColor: "rgba(0,0,0,0.4)", // fondo translúcido neutro
+    borderRadius: 20,
+    elevation: 3,
+  },
+  editIcon: {
+    backgroundColor: "rgba(0,122,255,0.85)", // azul sutil
+  },
+  deleteIcon: {
+    backgroundColor: "rgba(255,77,77,0.85)", // rojo sutil
+  },
 
 });
 

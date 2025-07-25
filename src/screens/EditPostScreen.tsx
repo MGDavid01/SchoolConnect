@@ -8,6 +8,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  Easing,
 } from "react-native";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { Menu } from "react-native-paper";
@@ -21,10 +23,8 @@ const EditPostScreen = () => {
   const route = useRoute<RouteProp<BlogStackParamList, "EditPost">>();
   const navigation = useNavigation();
   const { post } = route.params;
-
   const { user } = useAuth();
 
-  // Estados para editar
   const [contenido, setContenido] = useState(post.content);
   const [tipo, setTipo] = useState<"normal" | "ayuda" | "pregunta" | "aviso">(
     (post.tipo as any) || "normal"
@@ -32,9 +32,10 @@ const EditPostScreen = () => {
   const [visibilidad, setVisibilidad] = useState<"todos" | "grupo">(
     (post.categoria as "todos" | "grupo") || "todos"
   );
-
   const [tipoMenuVisible, setTipoMenuVisible] = useState(false);
   const [visibilidadMenuVisible, setVisibilidadMenuVisible] = useState(false);
+
+  const buttonScale = new Animated.Value(1);
 
   const handleGuardarCambios = async () => {
     try {
@@ -42,15 +43,21 @@ const EditPostScreen = () => {
         contenido,
         tipo,
         visibilidad,
-        userID: user?._id
+        userID: user?._id,
       });
-
-      
-
-      navigation.goBack(); // Regresar tras guardar cambios
+      navigation.goBack();
     } catch (error) {
       console.error("Error al actualizar publicación:", error);
     }
+  };
+
+  const animateButton = (to: number) => {
+    Animated.timing(buttonScale, {
+      toValue: to,
+      duration: 120,
+      easing: Easing.ease,
+      useNativeDriver: true,
+    }).start();
   };
 
   return (
@@ -132,12 +139,21 @@ const EditPostScreen = () => {
           value={contenido}
           onChangeText={setContenido}
           multiline
+          placeholder="Escribe aquí los cambios de tu publicación..."
+          placeholderTextColor={COLORS.textSecondary}
         />
 
-        {/* Botón para guardar cambios */}
-        <TouchableOpacity style={styles.button} onPress={handleGuardarCambios}>
-          <Text style={styles.buttonText}>Guardar cambios</Text>
-        </TouchableOpacity>
+        {/* Botón con animación */}
+        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleGuardarCambios}
+            onPressIn={() => animateButton(0.97)}
+            onPressOut={() => animateButton(1)}
+          >
+            <Text style={styles.buttonText}>Guardar cambios</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -149,72 +165,72 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    paddingBottom: 8
   },
   formContainer: {
     flexGrow: 1,
-    padding: 24
+    padding: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "800",
-    marginBottom: 24,
-    color: COLORS.text
+    marginBottom: 28,
+    color: COLORS.text,
+    textAlign: "center",
   },
   inputGroup: {
-    marginBottom: 24
+    marginBottom: 20,
   },
   label: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 8,
-    color: COLORS.text
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 6,
+    color: COLORS.textSecondary,
   },
   selector: {
     backgroundColor: COLORS.surface,
-    borderWidth: 1.2,
+    borderWidth: 1,
     borderColor: COLORS.textSecondary,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    elevation: 2,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    elevation: 1,
     shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
   },
   selectorText: {
     fontSize: 16,
     color: COLORS.text,
-    fontWeight: "500"
+    fontWeight: "500",
   },
   input: {
     backgroundColor: COLORS.surface,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    minHeight: 130,
+    borderRadius: 14,
+    minHeight: 140,
     textAlignVertical: "top",
     fontSize: 15,
     borderWidth: 1,
     borderColor: COLORS.textSecondary,
-    elevation: 1
+    shadowColor: "#000",
+    shadowOpacity: 0.02,
+    shadowRadius: 3,
   },
   button: {
     backgroundColor: COLORS.primary,
     paddingVertical: 14,
-    paddingHorizontal: 24,
-    marginTop: 20,
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    marginTop: 24,
+    borderRadius: 14,
     alignItems: "center",
-    elevation: 3,
     shadowColor: "#000",
-    shadowOpacity: 0.07,
-    shadowRadius: 6
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
   },
   buttonText: {
     color: "white",
     fontWeight: "700",
-    fontSize: 16
-  }
+    fontSize: 16,
+  },
 });
-

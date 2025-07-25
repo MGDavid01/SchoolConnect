@@ -34,7 +34,8 @@
     "react-native-calendars": "^1.1312.1",
     "react-native-paper": "^5.14.5",
     "react-native-reanimated": "^3.18.0",
-    "react-native-web": "^0.20.0"
+    "react-native-web": "^0.20.0",
+    "expo-linear-gradient": "~14.1.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
