@@ -143,25 +143,6 @@ const handlePublicar = async () => {
           />
         </View>
 
-        {/* Vista previa */}
-        <View style={styles.previewContainer}>
-          <Card style={styles.previewCard}>
-            <Card.Content>
-              <Text style={styles.previewTitle}>Vista previa</Text>
-
-              <View style={styles.previewMetadata}>
-                <Text style={styles.previewAuthor}>Autor: {user?._id}</Text>
-                <Text style={styles.previewDate}>{new Date().toLocaleDateString()}</Text>
-              </View>
-
-              <Chip style={styles.previewCategoryChip}>
-                <Text style={styles.previewCategoryText}>{tipo}</Text>
-              </Chip>
-
-              <Text style={styles.previewContent}>{contenido}</Text>
-            </Card.Content>
-          </Card>
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

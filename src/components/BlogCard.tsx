@@ -89,8 +89,6 @@ const BlogCard = ({
             <IconButton icon="comment-outline" size={22} iconColor={COLORS.primary} />
             <Text style={styles.reactionCount}>{comentarioCount}</Text>
           </TouchableOpacity>
-
-          <IconButton icon="share-variant" size={22} onPress={() => {}} />
         </View>
       </Card.Content>
     </Card>

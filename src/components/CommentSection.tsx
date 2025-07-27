@@ -185,79 +185,106 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, onCommentFocus 
     </KeyboardAvoidingView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16
+    padding: 24, // Más espacio como en otros formularios
+    backgroundColor: COLORS.background, // Fondo consistente con toda la app
   },
   title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 16,
-    color: COLORS.primary
+    fontSize: 24,
+    fontWeight: "800",
+    marginBottom: 24,
+    color: COLORS.text,
+    textAlign: "center", // Más profesional y armónico
   },
   commentsList: {
-    flex: 1
+    flex: 1,
   },
   commentContainer: {
     backgroundColor: COLORS.surface,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    elevation: 2
+    borderRadius: 16, // Más redondeado como modales y botones
+    padding: 16,
+    marginBottom: 16,
+    // Sombra más suave y consistente
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 3,
   },
   commentHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8
+    marginBottom: 10,
   },
   author: {
-    fontWeight: "bold",
-    color: COLORS.textSecondary
+    fontWeight: "700",
+    color: COLORS.primary, // Color principal para destacar autor
+    fontSize: 16,
   },
   date: {
     fontSize: 12,
-    color: COLORS.textSecondary
+    color: COLORS.textSecondary,
+    fontStyle: "italic",
   },
   commentText: {
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.text,
-    marginBottom: 8
+    marginBottom: 12,
+    lineHeight: 22, // Mejor legibilidad
   },
   reactionsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 4
+    marginTop: 8,
   },
   reactionGroup: {
     flexDirection: "row",
     alignItems: "center",
-    marginRight: 16
+    marginRight: 20,
   },
   reactionCount: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    marginLeft: -8
+    marginLeft: 4, // Separación más natural con el icono
   },
   inputContainer: {
     backgroundColor: COLORS.surface,
-    borderRadius: 8,
-    padding: 8,
-    marginTop: 8,
-    elevation: 4
+    borderRadius: 16, // Consistente con bordes de tarjetas y modales
+    padding: 12,
+    marginTop: 16,
+    // Sombra más suave y elevada
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   input: {
     backgroundColor: COLORS.background,
-    borderRadius: 4,
-    padding: 8,
-    minHeight: 40,
-    maxHeight: 100,
-    marginBottom: 8
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minHeight: 48,
+    maxHeight: 120,
+    fontSize: 15,
+    color: COLORS.text,
+    textAlignVertical: "top",
   },
   submitButton: {
-    alignSelf: "flex-end"
-  }
+    alignSelf: "flex-end",
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 16,
+    marginTop: 8,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+  },
 });
+
 
 export default CommentSection;
