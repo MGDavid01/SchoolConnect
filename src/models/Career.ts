@@ -15,6 +15,6 @@ const careerSchema = new Schema<ICareer>({
   descripcion: { type: String, required: true },
   duracion: { type: String, required: true },
   activo: { type: Boolean, required: true },
-});
+},{versionKey: false});
 
 export const CareerModel = model<ICareer>("career", careerSchema);

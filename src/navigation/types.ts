@@ -85,6 +85,34 @@ export type User = {
   fechaNacimiento: Date;
 };
 
+export interface Comment {
+  id: string;
+  content: string;
+  author: string;
+  date: string;
+  likes: number;
+}
+
+export interface BlogPost {
+  visibilidad: "todos" | "grupo";
+  categoria: "todos" | "grupo";
+  tipo: any;
+  id: string;
+  title: string;
+  content: string;
+  imageUrl?: string;
+  author: string;
+  date: string;
+  likes: number;
+  dislikes: number;
+  comments: Comment[]; // 👈 Asegúrate de que esto exista
+}
+
+export type BlogStackParamList = {
+  BlogList: undefined;
+  CreatePost: undefined;
+  EditPost: { post: BlogPost };
+};
 
 
 

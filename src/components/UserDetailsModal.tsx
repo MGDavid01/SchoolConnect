@@ -1,7 +1,8 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated } from "react-native";
 import { COLORS } from "../theme/theme";
-
+import { IconButton, Divider } from "react-native-paper";
+import ChangePasswordModal from "./ChangePasswordModal";
 
 interface User {
   _id: string;
@@ -18,59 +19,82 @@ interface User {
 interface UserDetailsModalProps {
   visible: boolean;
   onClose: () => void;
-  user?: User; // puede ser undefined mientras carga
-  onLogoutPress: () => void;
+  user?: User;
 }
 
+
+
 const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ visible, onClose, user }) => {
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [scaleAnim] = useState(new Animated.Value(0.9));
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.spring(scaleAnim, { toValue: 1, friction: 6, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
+        scaleAnim.setValue(0.9);
+      });
+    }
+  }, [visible]);
+
   return (
-    <Modal
-      animationType="fade"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
+    <Modal animationType="none" transparent visible={visible} onRequestClose={onClose}>
+      <Animated.View style={[styles.modalContainer, { opacity: fadeAnim }]}>
+        <Animated.View style={[styles.modalContent, { transform: [{ scale: scaleAnim }] }]}>
+          {/* Botón cerrar en esquina */}
+          <IconButton
+            icon="close"
+            size={24}
+            onPress={onClose}
+            style={styles.closeIcon}
+            iconColor={COLORS.textSecondary}
+          />
+
           <Text style={styles.modalTitle}>Información del usuario</Text>
+          <Divider style={{ marginBottom: 16, opacity: 0.3 }} />
 
-          <View style={styles.modalRow}>
-            <Text style={styles.modalLabel}>Nombre:</Text>
-            <Text style={styles.modalValue}>{user?.nombre || "N/A"}</Text>
-          </View>
-
-          <View style={styles.modalRow}>
-            <Text style={styles.modalLabel}>Apellido Paterno:</Text>
-            <Text style={styles.modalValue}>{user?.apellidoPaterno || "N/A"}</Text>
-          </View>
-
-          <View style={styles.modalRow}>
-            <Text style={styles.modalLabel}>Apellido Materno:</Text>
-            <Text style={styles.modalValue}>{user?.apellidoMaterno || "N/A"}</Text>
-          </View>
-
-          <View style={styles.modalRow}>
-            <Text style={styles.modalLabel}>Rol:</Text>
-            <Text style={styles.modalValue}>{user?.rol || "N/A"}</Text>
-          </View>
-
-          <View style={styles.modalRow}>
-            <Text style={styles.modalLabel}>Grupo:</Text>
-            <Text style={styles.modalValue}>{user?.grupoID || "N/A"}</Text>
-          </View>
-
-          <View style={styles.modalRow}>
-            <Text style={styles.modalLabel}>Fecha de registro:</Text>
-            <Text style={styles.modalValue}>
-              {user?.fechaRegistro ? new Date(user.fechaRegistro).toLocaleDateString() : "N/A"}
-            </Text>
-          </View>
-
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>Cerrar</Text>
+          {[
+            { label: "Nombre", value: user?.nombre },
+            { label: "Apellido Paterno", value: user?.apellidoPaterno },
+            { label: "Apellido Materno", value: user?.apellidoMaterno },
+            { label: "Rol", value: user?.rol },
+            { label: "Grupo", value: user?.grupoID },
+            {
+              label: "Fecha de registro",
+              value: user?.fechaRegistro ? new Date(user.fechaRegistro).toLocaleDateString() : undefined,
+            },
+          ].map((item, idx) => (
+            <View style={styles.infoRow} key={idx}>
+              <Text style={styles.label}>{item.label}:</Text>
+              <Text style={styles.value}>{item.value || "N/A"}</Text>
+            </View>
+          ))}
+          <TouchableOpacity
+            style={{
+              marginTop: 20,
+              padding: 12,
+              borderRadius: 10,
+              backgroundColor: COLORS.primary,
+              alignItems: "center",
+            }}
+            onPress={() => setPasswordModalVisible(true)}
+          >
+            <Text style={{ color: "white", fontWeight: "600" }}>Cambiar contraseña</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+
+          {/* Modal de cambio de contraseña */}
+          <ChangePasswordModal
+            visible={passwordModalVisible}
+            onClose={() => setPasswordModalVisible(false)}
+            userId={user?._id}
+          />
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 };
@@ -84,40 +108,42 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: COLORS.surface,
-    borderRadius: 10,
+    borderRadius: 16,
     padding: 20,
-    width: "80%",
+    width: "85%",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    position: "relative",
+  },
+  closeIcon: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    zIndex: 10,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
     color: COLORS.primary,
-    marginBottom: 20,
     textAlign: "center",
+    marginBottom: 12,
   },
-  modalRow: {
+  infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 15,
+    marginVertical: 8,
   },
-  modalLabel: {
-    fontWeight: "bold",
+  label: {
+    fontWeight: "600",
     color: COLORS.text,
+    fontSize: 15,
   },
-  modalValue: {
+  value: {
     color: COLORS.textSecondary,
-  },
-  closeButton: {
-    backgroundColor: COLORS.primary,
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 20,
-  },
-  closeButtonText: {
-    color: COLORS.surface,
-    textAlign: "center",
+    fontSize: 15,
   },
 });
-
 
 export default UserDetailsModal;

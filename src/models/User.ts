@@ -1,4 +1,3 @@
-// src/models/User.ts
 import { Schema, model, Document } from "mongoose";
 
 export interface IUser extends Document {
@@ -60,6 +59,7 @@ const usuarioSchema = new Schema<IUser>({
   },
 },
   {
+  versionKey: false,
   collection: "usuarios",
   }
 );

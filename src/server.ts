@@ -12,6 +12,8 @@ import horarioRoutes from "./routes/horario.routes";
 import becaRoutes from "./routes/beca.routes";
 import calendarioEscolarRoutes from "./routes/calendario-escolar.routes";
 import iotNotificationsRoutes from "./routes/iot-notifications.routes";
+import comentarioRoutes from "./routes/comentario.routes";
+import userRoutes from "./routes/user.routes";
 
 dotenv.config();
 
@@ -29,7 +31,7 @@ connectDB();
 // 2. Middlewares
 app.use(cors({
   origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 app.use(express.json());
@@ -50,6 +52,8 @@ app.use("/api/horario", horarioRoutes); // GET /api/horario/:grupoID
 app.use("/api/becas", becaRoutes); // GET /api/becas
 app.use("/", calendarioEscolarRoutes); // GET /api/calendario
 app.use("/api/iot-notifications", iotNotificationsRoutes); // IoT notifications routes
+app.use("/api/comentarios", comentarioRoutes);
+app.use("/api/users", userRoutes);
 
 app.get("/", (req, res) => {
   res.send("API funcionando ✅");

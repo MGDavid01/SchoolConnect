@@ -1,9 +1,8 @@
 import React from "react";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
-import { Card, Text, IconButton } from "react-native-paper";
+import { View, TouchableOpacity, StyleSheet, Image } from "react-native";
+import { Card, Text, IconButton, Avatar } from "react-native-paper";
 import { COLORS } from "../theme/theme";
-// BlogCard.tsx
-import { BlogPost } from "../types/blog"; // ajusta la ruta si es necesario
+import { BlogPost } from "../types/blog";
 
 interface BlogCardProps {
   post: BlogPost;
@@ -13,6 +12,7 @@ interface BlogCardProps {
   onReact: (postId: string, reaction: "like" | "dislike") => void;
   onComment: (post: BlogPost) => void;
   onViewMore: () => void;
+  comentarioCount: number;
 }
 
 const BlogCard = ({
@@ -22,161 +22,148 @@ const BlogCard = ({
   onExpand,
   onReact,
   onComment,
-}: BlogCardProps) => (
-  <Card style={styles.card}>
-    <Card.Content>
-      <Text style={styles.title}>{post.title}</Text>
-      <View style={styles.headerRow}>
-        <Text style={styles.author}>{post.author}</Text>
-        <Text style={styles.author}>{post.date}</Text>
+  comentarioCount,
+}: BlogCardProps) => {
+  const avatarLetter = post.author?.charAt(0).toUpperCase() || "?";
+
+  return (
+    <Card style={styles.card}>
+      {/* Header con autor y fecha */}
+      <View style={styles.header}>
+        <Avatar.Text
+          size={36}
+          label={avatarLetter}
+          style={styles.avatar}
+          color="white"
+        />
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <Text style={styles.author}>{post.author}</Text>
+          <Text style={styles.date}>{post.date}</Text>
+        </View>
       </View>
-    </Card.Content>
 
-    {post.imageUrl && (
-      <Card.Cover source={{ uri: post.imageUrl }} style={styles.image} />
-    )}
+      {/* Imagen */}
+      {post.imageUrl && (
+        <Image source={{ uri: post.imageUrl }} style={styles.image} />
+      )}
 
-    <Card.Content>
-      <Text style={styles.content} numberOfLines={expanded ? undefined : 3}>
-        {post.content}
-      </Text>
-      <TouchableOpacity
-        onPress={() => onExpand(post.id)}
-        style={styles.expandBtn}
-      >
-        <Text style={styles.expandText}>
-          {expanded ? "Ver menos" : "Ver más"}
+      {/* Contenido */}
+      <Card.Content>
+        <Text style={styles.title}>{post.title}</Text>
+        <Text style={styles.content} numberOfLines={expanded ? undefined : 3}>
+          {post.content}
         </Text>
-      </TouchableOpacity>
 
-      <View style={styles.actionsRow}>
-        <View style={styles.reactionsRow}>
+        {/* Botón Ver más */}
+        <TouchableOpacity onPress={() => onExpand(post.id)} style={styles.expandBtn}>
+          <Text style={styles.expandText}>{expanded ? "Ver menos" : "Ver más"}</Text>
+        </TouchableOpacity>
+
+        {/* Acciones */}
+        <View style={styles.actionsRow}>
           <TouchableOpacity
             style={styles.reactionBtn}
-            onPress={() => {
-              console.log("🟡 Botón LIKE presionado:", post.id);
-              onReact(post.id, "like") } }
+            onPress={() => onReact(post.id, "like")}
           >
             <IconButton
-              icon={userReaction === "like" ? "thumb-up" : "thumb-up-outline"}
-              size={20}
-              iconColor={
-                userReaction === "like" ? COLORS.primary : COLORS.textSecondary
-              }
+              icon={userReaction === "like" ? "heart" : "heart-outline"}
+              size={22}
+              iconColor={userReaction === "like" ? COLORS.primary : COLORS.textSecondary}
             />
             <Text style={styles.reactionCount}>{post.likes}</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.reactionBtn}
-            onPress={() => { console.log("🟡 Botón DISLIKE presionado:", post.id);
-              onReact(post.id, "dislike")} }
+            onPress={() => onReact(post.id, "dislike")}
           >
             <IconButton
-              icon={
-                userReaction === "dislike"
-                  ? "thumb-down"
-                  : "thumb-down-outline"
-              }
-              size={20}
-              iconColor={
-                userReaction === "dislike" ? COLORS.error : COLORS.textSecondary
-              }
+              icon={userReaction === "dislike" ? "thumb-down" : "thumb-down-outline"}
+              size={22}
+              iconColor={userReaction === "dislike" ? COLORS.error : COLORS.textSecondary}
             />
             <Text style={styles.reactionCount}>{post.dislikes}</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.commentBtn}
-            onPress={() => onComment(post)}
-          >
-            <IconButton
-              icon="comment-outline"
-              size={20}
-              iconColor={COLORS.textSecondary}
-            />
-            <Text style={styles.reactionCount}>
-              {post.comments.length}{" "}
-              {post.comments.length === 1 ? "comentario" : "comentarios"}
-            </Text>
+
+          <TouchableOpacity style={styles.reactionBtn} onPress={() => onComment(post)}>
+            <IconButton icon="comment-outline" size={22} iconColor={COLORS.primary} />
+            <Text style={styles.reactionCount}>{comentarioCount}</Text>
           </TouchableOpacity>
         </View>
-        <IconButton
-          icon="share-variant"
-          size={20}
-          onPress={() => {
-            /* Implementar compartir */
-          }}
-        />
-      </View>
-    </Card.Content>
-  </Card>
-);
+      </Card.Content>
+    </Card>
+  );
+};
 
 const styles = StyleSheet.create({
   card: {
-    margin: 8,
-    elevation: 4,
+    marginVertical: 10,
+    marginHorizontal: 16,
+    borderRadius: 16,
     backgroundColor: COLORS.surface,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+    overflow: "hidden",
   },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: COLORS.primary,
-    marginBottom: 8,
-  },
-  headerRow: {
+  header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
-    paddingHorizontal: 4,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  avatar: {
+    backgroundColor: COLORS.primary,
   },
   author: {
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  date: {
+    fontSize: 12,
     color: COLORS.textSecondary,
   },
   image: {
-    height: 200,
-    marginVertical: 8,
+    height: 180,
+    width: "100%",
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: COLORS.text,
+    marginTop: 10,
   },
   content: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: COLORS.text,
-    marginVertical: 8,
+    fontSize: 15,
+    color: COLORS.textSecondary,
+    lineHeight: 22,
+    marginTop: 4,
   },
   expandBtn: {
-    alignSelf: "flex-start",
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 6,
   },
   expandText: {
     color: COLORS.primary,
-    fontWeight: "bold",
+    fontWeight: "500",
   },
   actionsRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.1)",
-  },
-  reactionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    marginTop: 10,
+    paddingHorizontal: 8,
+    paddingBottom: 10,
   },
   reactionBtn: {
     flexDirection: "row",
     alignItems: "center",
     marginRight: 16,
   },
-  commentBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
   reactionCount: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.textSecondary,
   },
 });

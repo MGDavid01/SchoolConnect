@@ -1,3 +1,6 @@
+//Aqui se guarda el usuario que esta ingresando a la aplicacion por medio del login
+
+
 import React, { createContext, useEffect, useState, ReactNode, useContext } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 

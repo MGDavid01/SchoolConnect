@@ -4,7 +4,6 @@ export interface Comment {
   author: string;
   content: string;
   date: string;
-  likes: number;
 }
 
 export interface BlogPost {

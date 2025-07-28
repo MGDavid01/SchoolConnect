@@ -1,6 +1,9 @@
 import express from "express";
 import {ComentarioModel} from "../models/Comentario"; // ajusta la ruta según tu estructura
 import { UserModel } from "../models/User"; // si necesitas obtener autor
+import mongoose from "mongoose";
+import {PublicacionModel} from "../models/Publication";
+
 
 const router = express.Router();
 
@@ -10,7 +13,7 @@ router.get("/:publicacionID", async (req, res) => {
 
   try {
     const comentarios = await ComentarioModel.aggregate([
-      { $match: { publicacionID } },
+      { $match: { publicacionID: new mongoose.Types.ObjectId(publicacionID) } },
       {
         $lookup: {
           from: "usuarios",
@@ -58,9 +61,10 @@ router.get("/conteo/todos", async (_req, res) => {
       },
     ]);
 
+    // 🔧 Conversión segura de ObjectId a string como clave
     const resultado: Record<string, number> = {};
     conteo.forEach((item) => {
-      resultado[item._id] = item.totalComentarios;
+      resultado[item._id.toString()] = item.totalComentarios;
     });
 
     res.json(resultado);
@@ -70,6 +74,7 @@ router.get("/conteo/todos", async (_req, res) => {
   }
 });
 
+// Agregar nuevo comentario
 // Agregar nuevo comentario
 router.post("/", async (req, res) => {
   const { publicacionID, usuarioID, contenido } = req.body;
@@ -83,14 +88,51 @@ router.post("/", async (req, res) => {
       publicacionID,
       usuarioID,
       contenido,
-      fecha: new Date(),
+      fecha: new Date()
     });
 
     await nuevoComentario.save();
-    res.status(201).json(nuevoComentario);
+
+    res.status(201).json(nuevoComentario); // ← devolver el comentario guardado
   } catch (error) {
     console.error("❌ Error al agregar comentario:", error);
     res.status(500).json({ message: "Error al agregar comentario" });
+  }
+});
+
+//Obtener los comentarios que ha realizado un usuario con detalles, esto para la seccion de Comentarios que tiene la seccion de perfil
+router.get("/usuario/:usuarioID/detallados", async (req, res) => {
+  const { usuarioID } = req.params;
+  try {
+    // Buscamos todos los comentarios hechos por el usuario
+    const comentarios = await ComentarioModel.find({ usuarioID }).lean();
+
+    // Obtenemos los IDs de publicaciones relacionadas
+    const postIds = [...new Set(comentarios.map((c) => c.publicacionID.toString()))];
+    const publicaciones = await PublicacionModel.find({ _id: { $in: postIds } }).lean();
+
+    // Creamos un map para obtener detalles rápidos de cada publicación
+    const publicacionesMap = publicaciones.reduce((acc, pub) => {
+      acc[pub._id.toString()] = {
+        titulo: pub.tipo || "Publicación",
+        autor: pub.autorID || "Desconocido",
+        fecha: pub.fecha,
+      };
+      return acc;
+    }, {} as Record<string, any>);
+
+    // Combinamos los datos
+    const comentariosDetallados = comentarios.map((c) => ({
+      id: c._id,
+      contenido: c.contenido,
+      fecha: c.fecha,
+      publicacion: publicacionesMap[c.publicacionID.toString()] || null,
+    }));
+
+    res.json(comentariosDetallados);
+  } catch (error) {
+    console.error("Error al obtener comentarios del usuario:", error);
+    res.status(500).json({ message: "Error del servidor" });
   }
 });
 

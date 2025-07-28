@@ -3,27 +3,49 @@ import { PublicacionModel } from "../models/Publication";
 import { ReaccionModel } from "../models/Reaccion";
 import { UserModel } from "../models/User";
 import mongoose from "mongoose";
+import {ComentarioModel} from "../models/Comentario";
+
 
 const router = express.Router();
 
-// Obtener todas las publicaciones activas
+
 router.get("/", async (req, res) => {
   try {
+    const { grupoID, tipo, filtroVisibilidad } = req.query;
+
+    const matchStage: any = { activo: true };
+
+    // Filtrado según visibilidad y grupo
+    if (filtroVisibilidad === "todos") {
+      matchStage.$or = [
+        { visibilidad: "todos" },
+        { visibilidad: "grupo", grupoID: String(grupoID) }
+      ];
+    } else if (filtroVisibilidad === "grupo") {
+      matchStage.$or = [
+        { visibilidad: "todos", grupoID: String(grupoID) },
+        { visibilidad: "grupo", grupoID: String(grupoID) }
+      ];
+    }
+
+    // Filtrar por tipo (normal, ayuda, etc.)
+    if (tipo && tipo !== "todas") {
+      matchStage.tipo = tipo;
+    }
+
+    console.log(">>> Filtro final en el backend:", JSON.stringify(matchStage, null, 2));
+
     const publicaciones = await PublicacionModel.aggregate([
       {
         $lookup: {
-          from: "usuarios", // nombre real de la colección de usuarios en tu base
+          from: "usuarios",
           localField: "autorID",
           foreignField: "_id",
           as: "autor",
         },
       },
-      {
-        $unwind: "$autor",
-      },
-      {
-        $match: { activo: true },
-      },
+      { $unwind: "$autor" },
+      { $match: matchStage },
       {
         $project: {
           _id: 1,
@@ -33,16 +55,19 @@ router.get("/", async (req, res) => {
           visibilidad: 1,
           imagenURL: 1,
           autorID: 1,
+          grupoID: 1,
           autorNombre: {
             $concat: [
-                "$autor.nombre"," ",
-                "$autor.apellidoPaterno"," ",
-                "$autor.apellidoMaterno"
-            ]
-          }
+              "$autor.nombre", " ",
+              "$autor.apellidoPaterno", " ",
+              "$autor.apellidoMaterno",
+            ],
+          },
         },
       },
+      { $sort: { fecha: -1 } },
     ]);
+
     res.json(publicaciones);
   } catch (error) {
     console.error("Error al obtener publicaciones:", error);
@@ -51,14 +76,31 @@ router.get("/", async (req, res) => {
 });
 
 
+
 // Crear una nueva publicación
 router.post("/", async (req, res) => {
+  const { autorID, contenido, grupoID, tipo, visibilidad, imagenURL } = req.body;
+
+  if (!autorID || !contenido || !tipo || !visibilidad) {
+    return res.status(400).json({ message: "Faltan campos requeridos." });
+  }
+
   try {
-    const nuevaPublicacion = new PublicacionModel(req.body);
+    const nuevaPublicacion = new PublicacionModel({
+      autorID,
+      contenido,
+      grupoID,
+      tipo,
+      visibilidad,
+      imagenURL,
+    });
+
     await nuevaPublicacion.save();
+
     res.status(201).json(nuevaPublicacion);
   } catch (error) {
-    res.status(400).json({ message: "Error al crear publicación" });
+    console.error("❌ Error al crear publicación:", error);
+    res.status(500).json({ message: "Error del servidor." });
   }
 });
 
@@ -152,6 +194,66 @@ router.post("/bulk", async (req, res) => {
     res.status(500).json({ message: "Error al obtener publicaciones" });
   }
 });
+
+router.patch("/:id", async (req, res) => {
+  const { id } = req.params;
+  const { userID, contenido, tipo, visibilidad, accion } = req.body;
+
+  try {
+    const publicacion = await PublicacionModel.findById(id);
+    if (!publicacion) {
+      return res.status(404).json({ message: "Publicación no encontrada" });
+    }
+
+    if (publicacion.autorID.toString() !== userID) {
+      return res.status(403).json({ message: "No tienes permiso para modificar esta publicación" });
+    }
+
+    if (accion === "eliminar") {
+      publicacion.activo = false;
+      await publicacion.save();
+      return res.json({ message: "Publicación eliminada correctamente" });
+    }
+
+    // Si no es eliminar, es editar
+    if (contenido !== undefined) publicacion.contenido = contenido;
+    if (tipo !== undefined) publicacion.tipo = tipo;
+    if (visibilidad !== undefined) publicacion.visibilidad = visibilidad;
+
+    await publicacion.save();
+    res.json({ message: "Publicación actualizada correctamente", publicacion });
+  } catch (error) {
+    console.error("Error al modificar publicación:", error);
+    res.status(500).json({ message: "Error del servidor" });
+  }
+});
+
+
+// RUTA NUEVA: Obtener publicaciones donde un usuario comentó
+router.get("/comentadas/:usuarioID", async (req, res) => {
+  const { usuarioID } = req.params;
+
+  try {
+    const comentariosUsuario = await ComentarioModel.find({ usuarioID }).select("publicacionID");
+
+    const publicacionesIDs = comentariosUsuario.map(c => c.publicacionID);
+
+    const publicaciones = await PublicacionModel.find({
+      _id: { $in: publicacionesIDs },
+      activo: true, 
+    }).populate("autorID", "nombre apellidoPaterno apellidoMaterno");
+
+    res.json(publicaciones);
+  } catch (error) {
+    console.error("❌ Error al obtener publicaciones comentadas:", error);
+    res.status(500).json({ message: "Error del servidor" });
+  }
+});
+
+
+
+
+
 
 
 

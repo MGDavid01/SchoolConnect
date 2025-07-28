@@ -8,6 +8,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Animated,
+  Easing 
 } from "react-native";
 import {
   Card,
@@ -17,6 +19,7 @@ import {
   IconButton,
   Searchbar,
   FAB,
+  Menu,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "../theme/theme";
@@ -29,25 +32,61 @@ import { useEffect } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { eventBus } from "../utils/eventBus";
-
+import { useAuth } from "../contexts/AuthContext";
 interface BlogScreenProps {
   navigation: NavigationProp<any>;
 }
 
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
+
 const BlogScreen = ({ navigation }: BlogScreenProps) => {
+  const { user } = useAuth();
   const [posts, setPosts] = useState<BlogPost[]>([  ]);
-  
-  useEffect(() => {
-  const fetchPosts = async () => {
-    try {
-      const publicacionesRes = await axios.get(`${API_URL}/api/publicaciones`);
+  const [conteoComentarios, setConteoComentarios] = useState<Record<string, number>>({});
+  const [comentariosPorPublicacion, setComentariosPorPublicacion] = useState<Record<string, any[]>>({});
+        const fetchComentarios = async (postId: string) => {
+        try {
+          const res = await axios.get(`${API_URL}/api/comentarios/${postId}`);
+          setComentariosPorPublicacion((prev) => ({
+            ...prev,
+            [postId]: res.data,
+          }));
+        } catch (error) {
+          console.error("❌ Error al cargar comentarios", error);
+        }
+      };
+ const [filtroVisibilidad, setFiltroVisibilidad] = useState<"todos" | "grupo">("todos");
+  const [filtroTipo, setFiltroTipo] = useState<"todas" | "normal" | "ayuda" | "pregunta" | "aviso">("todas");
+  const [visibilidadMenuVisible, setVisibilidadMenuVisible] = useState(false);
+  const [tipoMenuVisible, setTipoMenuVisible] = useState(false);
+      
+ const fetchPosts = async () => {
+    if (!user) return; // aseguramos que hay usuario logueado
+  try {
+    console.log("Filtro visibilidad:", filtroVisibilidad);
+    console.log("Grupo del usuario:", user.grupoID);
+    console.log("Filtro tipo:", filtroTipo);
+
+    const publicacionesRes = await axios.get(`${API_URL}/api/publicaciones`, {
+      params: { 
+        filtroVisibilidad, // <-- ahora lo enviamos explícitamente
+        grupoID: user.grupoID, // <-- siempre lo enviamos, el backend decidirá si usarlo
+        tipo: filtroTipo !== "todas" ? filtroTipo : undefined,
+      }
+    });
+
+      
       const publicaciones = publicacionesRes.data;
-        
+
       const conteoRes = await axios.get(`${API_URL}/api/reacciones/conteo`);
       const conteos = conteoRes.data;
 
+      const comentariosRes = await axios.get(`${API_URL}/api/comentarios/conteo/todos`);
+      const conteoComentariosData = comentariosRes.data;
+      setConteoComentarios(conteoComentariosData);
+
       const usuarioID = await AsyncStorage.getItem("correo");
-      console.log("📩 usuarioID recuperado de AsyncStorage:", usuarioID);
       let reacciones: Record<string, "like" | "dislike"> = {};
       if (usuarioID) {
         const reaccionRes = await axios.get(`${API_URL}/api/reacciones/${usuarioID}`);
@@ -62,6 +101,8 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
         author: item.autorNombre,
         date: new Date(item.fecha).toISOString().split("T")[0],
         category: item.visibilidad === "todos" ? "Público" : "Grupo",
+        visibilidad: item.visibilidad,   // <-- añadir esto
+        tipo: item.tipo, 
         imageUrl: item.imagenURL || "",
         likes: conteos[item._id]?.like || 0,
         dislikes: conteos[item._id]?.dislike || 0,
@@ -75,19 +116,23 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
     }
   };
 
-  fetchPosts();
-
-  const handler = () => {
+useEffect(() => {  
+  console.log("Filtro visibilidad:", filtroVisibilidad);
+  console.log("Grupo del usuario:", user?.grupoID);
+  console.log("Filtro tipo:", filtroTipo);
+  if (user?.grupoID) {
     fetchPosts();
-  };
+  }
+}, [filtroVisibilidad, filtroTipo, user?.grupoID]);
 
-  eventBus.on("reactionChanged", handler);
+useFocusEffect(
+  useCallback(() => {
+    fetchPosts();
+  }, [filtroVisibilidad, filtroTipo, user?.grupoID])
+);
 
-  return () => {
-    eventBus.off("reactionChanged", handler);
-  };
-  }, []);
 
+  
 
   const [searchQuery, setSearchQuery] = useState("");
   const [commentModalVisible, setCommentModalVisible] = useState(false);
@@ -95,6 +140,8 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
   const [newComment, setNewComment] = useState("");
   const [userReactions, setUserReactions] = useState<Record<string, "like" | "dislike" | null>>({});
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
+
+ 
 
   const inputRef = useRef<TextInput>(null);
 
@@ -160,41 +207,153 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
 };
 
 
+const handleCommentPress = async (post: BlogPost) => {
+  try {
+    const res = await axios.get(`${API_URL}/api/comentarios/${post.id}`);
+    const comentarios = res.data;
 
-  const handleCommentPress = (post: BlogPost) => {
-    setSelectedPost(post);
+    const enrichedComments = comentarios.map((c: any) => ({
+      id: c._id,
+      content: c.contenido,
+      author: c.autorNombre || c.usuarioID,
+      date: new Date(c.fecha).toISOString().split("T")[0],
+    }));
+
+    // ✅ Guardar los comentarios solo en el estado centralizado
+    setComentariosPorPublicacion((prev) => ({
+      ...prev,
+      [post.id]: enrichedComments,
+    }));
+    console.log("🟠 Comentarios recibidos del backend:", comentarios);
+    console.log("🟠 Comentarios enriquecidos:", enrichedComments);
+
+    // ✅ Guardar el post seleccionado (sin tocar sus comments)
+    setSelectedPost({
+        ...(post as any),
+        comments: enrichedComments,
+      });
+
+    console.log(selectedPost?.comments);
+    console.log("🟢 Post seleccionado con comentarios:", {
+      ...post,
+      comments: enrichedComments,
+    });
+
+    // ✅ Mostrar el modal
     setCommentModalVisible(true);
-  };
+  } catch (error) {
+    console.error("❌ Error al cargar comentarios:", error);
+  }
+};
 
-  const handleAddComment = () => {
-    if (!selectedPost || !newComment.trim()) return;
-
-    const newCommentObj: Comment = {
-      id: Date.now().toString(),
-      content: newComment.trim(),
-      author: "Usuario Actual", // Esto debería venir del contexto de autenticación
-      date: new Date().toISOString().split("T")[0],
-      likes: 0,
+const handleAddComment = async () => {
+  
+  if (!newComment.trim()) return;
+  if (!selectedPost) return;
+  
+  try {
+    const payload = {
+      publicacionID: selectedPost.id,
+      usuarioID: user?._id,
+      contenido: newComment.trim(),
     };
 
-    setPosts(
-      posts.map((post) => {
-        if (post.id === selectedPost.id) {
-          return {
-            ...post,
-            comments: [newCommentObj, ...post.comments],
-          };
-        }
-        return post;
-      })
+    const res = await axios.post(`${API_URL}/api/comentarios`, payload);
+    const nuevoComentario = res.data;
+    
+    const enriched = {
+      id: nuevoComentario._id,
+      content: nuevoComentario.contenido,
+      author: user?.nombre + " " + user?.apellidoPaterno + " " + user?.apellidoMaterno,
+      date: new Date(nuevoComentario.fecha).toISOString().split("T")[0],
+    };
+
+
+    // Actualizar el estado
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === selectedPost.id
+          ? { ...p, comments: [...(p.comments || []), enriched] }
+          : p
+      )
+    );
+
+    setSelectedPost((prev) =>
+      prev ? { ...prev, comments: [...prev.comments, enriched] } : prev
     );
 
     setNewComment("");
+    inputRef.current?.clear();
+
+    // Opcional: actualizar contador global
+    setConteoComentarios((prev) => ({
+      ...prev,
+      [selectedPost.id]: (prev[selectedPost.id] || 0) + 1,
+    }));
+  } catch (error) {
+    console.error("❌ Error al agregar comentario:", error);
+  }
+};
+
+  const actualizarPost = (postActualizado: BlogPost) => {
+    setPosts((prev) =>
+      prev.map((p) => (p.id === postActualizado.id ? postActualizado : p))
+    );
   };
+
 
   const handleExpandPost = (postId: string) => {
     setExpandedPostId(expandedPostId === postId ? null : postId);
   };
+
+  //Para el modal de confirmacion de eliminación de una publicacion hecha por un usuario
+      const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+      const [selectedPostToDelete, setSelectedPostToDelete] = useState<string | null>(null);
+
+      const handleEliminar = (postId: string) => {
+        setSelectedPostToDelete(postId);
+        setDeleteModalVisible(true);
+      };
+
+      const confirmDeletePost = async () => {
+        if (!selectedPostToDelete) return;
+
+        try {
+          await axios.patch(`${API_URL}/api/publicaciones/${selectedPostToDelete}`, { userID: user!._id, accion: "eliminar"});
+
+          // Actualizar lista localmente
+          setPosts((prev) => prev.filter((p) => p.id !== selectedPostToDelete));
+
+          setDeleteModalVisible(false);
+          setSelectedPostToDelete(null);
+        } catch (error) {
+          console.error("Error al eliminar publicación:", error);
+        }
+      };
+
+      const scaleAnim = useRef(new Animated.Value(0.8)).current;  // escala inicial
+      const opacityAnim = useRef(new Animated.Value(0)).current;  // opacidad inicial
+      useEffect(() => {
+        if (deleteModalVisible) {
+          Animated.parallel([
+            Animated.timing(opacityAnim, {
+              toValue: 1,
+              duration: 250, // un poco más lento para suavidad
+              useNativeDriver: true,
+            }),
+            Animated.timing(scaleAnim, {
+              toValue: 1,
+              duration: 250,
+              easing: Easing.out(Easing.ease), // suavizado
+              useNativeDriver: true,
+            }),
+          ]).start();
+        } else {
+          // Al cerrar, se restablecen valores
+          opacityAnim.setValue(0);
+          scaleAnim.setValue(0.9); // empieza un poco más grande para cuando se abra de nuevo
+        }
+      }, [deleteModalVisible]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -206,24 +365,99 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
           style={styles.searchbar}
         />
       </View>
+      <View style={styles.filtrosContainer}>
+      {/* Filtro visibilidad */}
+      <Menu
+        visible={visibilidadMenuVisible}
+        onDismiss={() => setVisibilidadMenuVisible(false)}
+        anchor={
+          <TouchableOpacity onPress={() => setVisibilidadMenuVisible(true)} style={styles.selector}>
+            <Text style={styles.selectorText}>
+              {filtroVisibilidad === "todos" ? "Todos" : "Mi grupo"}
+            </Text>
+          </TouchableOpacity>
+        }
+      >
+        <Menu.Item 
+          onPress={() => {
+            setFiltroVisibilidad("todos");
+            setVisibilidadMenuVisible(false);
+          }} 
+          title="Todos" 
+        />
+        <Menu.Item 
+          onPress={() => {
+            setFiltroVisibilidad("grupo");
+            setVisibilidadMenuVisible(false);
+          }} 
+          title="Mi grupo" 
+        />
+      </Menu>
 
-      <ScrollView>
-        {filteredPosts.map((post) => (
-          <BlogCard
-            key={post.id}
-            post={post}
-            expanded={expandedPostId === post.id}
-            userReaction={userReactions[post.id]}
-            onExpand={handleExpandPost}
-            onReact={handleReaction}
-            onComment={handleCommentPress}
-              onViewMore={() => {
-                // lógica que quieras para ver más (puede ser navegar a detalle)
-              }}
+      {/* Filtro tipo */}
+      <Menu
+        visible={tipoMenuVisible}
+        onDismiss={() => setTipoMenuVisible(false)}
+        anchor={
+          <TouchableOpacity onPress={() => setTipoMenuVisible(true)} style={styles.selector}>
+            <Text style={styles.selectorText}>
+              {filtroTipo === "todas" ? "Todas" : filtroTipo.charAt(0).toUpperCase() + filtroTipo.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        }
+      >
+        {["todas", "normal", "ayuda", "pregunta", "aviso"].map((op) => (
+          <Menu.Item
+            key={op}
+            onPress={() => setFiltroTipo(op as any)}
+            title={op === "todas" ? "Todas" : op.charAt(0).toUpperCase() + op.slice(1)}
           />
         ))}
-      </ScrollView>
+      </Menu>
+    </View>
 
+
+      <ScrollView>
+    {filteredPosts.map((post) => (
+    <View key={post.id}>
+      <BlogCard
+        post={post}
+        expanded={expandedPostId === post.id}
+        userReaction={userReactions[post.id]}
+        onExpand={handleExpandPost}
+        onReact={handleReaction}
+        onComment={handleCommentPress}
+        onViewMore={() => {
+          // lógica que quieras para ver más
+        }}
+        comentarioCount={conteoComentarios[post.id] || 0}
+      />
+
+      {/* Botón de eliminar (solo si es del usuario actual) */}
+      {post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}` && (
+      <>
+      <View style={styles.floatingButtons}>
+        <IconButton
+          icon="pencil"
+          size={20}
+          onPress={() => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
+          style={[styles.floatingBtn, styles.editIcon]}
+          iconColor="white"
+        />
+        <IconButton
+          icon="delete"
+          size={20}
+          onPress={() => handleEliminar(post.id)}
+          style={[styles.floatingBtn, styles.deleteIcon]}
+          iconColor="white"
+        />
+      </View>
+    </>
+    )}
+
+    </View>
+  ))}
+</ScrollView>
       <FAB
         icon="plus"
         style={styles.fab}
@@ -231,8 +465,9 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
           navigation.navigate("CreatePost");
         }}
       />
-
+      
       <Modal
+      
         visible={commentModalVisible}
         animationType="slide"
         transparent={true}
@@ -248,25 +483,24 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
                 onPress={() => setCommentModalVisible(false)}
               />
             </View>
-
+            
             <ScrollView style={styles.commentsList}>
-              {selectedPost?.comments.map((comment) => (
-                <View key={comment.id} style={styles.commentItem}>
-                  <Text style={styles.commentAuthor}>{comment.author}</Text>
-                  <Text style={styles.commentText}>{comment.content}</Text>
-                  <View style={styles.commentMeta}>
-                    <Text style={styles.commentDate}>{comment.date}</Text>
-                    <TouchableOpacity style={styles.commentLike}>
-                      <IconButton
-                        icon="thumb-up-outline"
-                        size={16}
-                        iconColor={COLORS.textSecondary}
-                      />
-                      <Text style={styles.likeCount}>{comment.likes}</Text>
-                    </TouchableOpacity>
+              {selectedPost?.comments && selectedPost.comments.length > 0 ? (
+                selectedPost.comments.map((comment) => (
+                  <View key={comment.id} style={styles.commentItem}>
+                    <Text style={styles.commentAuthor}>{comment.author}</Text>
+                    <Text style={styles.commentText}>{comment.content}</Text>
+                    <View style={styles.commentMeta}>
+                      <Text style={styles.commentDate}>{comment.date}</Text>
+                      
+                    </View>
                   </View>
-                </View>
-              ))}
+                ))
+              ) : (
+                <Text style={{ textAlign: "center", color: COLORS.textSecondary }}>
+                  No hay comentarios aún.
+                </Text>
+              )}
             </ScrollView>
 
             <KeyboardAvoidingView
@@ -295,6 +529,44 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
           </View>
         </View>
       </Modal>
+      <Modal
+  visible={deleteModalVisible}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setDeleteModalVisible(false)}
+>
+  <View style={styles.modalOverlay}>
+    <Animated.View
+      style={[
+        styles.confirmModal,
+        {
+          opacity: opacityAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
+    <View style={styles.confirmModal}>
+      <Text style={styles.modalTitle}>¿Eliminar publicación?</Text>
+      <Text style={styles.modalText}>Esta acción no se puede deshacer.</Text>
+      <View style={styles.modalActions}>
+       <TouchableOpacity
+          style={[styles.modalButton, { backgroundColor: COLORS.textSecondary }]}
+          onPress={() => setDeleteModalVisible(false)}
+        >
+          <Text style={styles.modalButtonText}>Cancelar</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.modalButton, { backgroundColor: COLORS.error }]}
+          onPress={confirmDeletePost}
+        >
+          <Text style={styles.modalButtonText}>Eliminar</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+    </Animated.View>
+  </View>
+</Modal>
     </SafeAreaView>
   );
 };
@@ -413,67 +685,190 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,0,0,0.1)",
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: COLORS.primary,
+
+  //diseños para la sección de comentarios
+modalTitle: {
+  fontSize: 22,              
+  fontWeight: "800",         
+  color: COLORS.primary,
+  textAlign: "center",        
+  marginVertical: 20,    
+},
+commentsList: {
+  flex: 1,
+  paddingHorizontal: 24,      
+  paddingBottom: 16,        
+  backgroundColor: COLORS.background,
+},
+commentItem: {
+  marginBottom: 16,
+  padding: 16,              
+  backgroundColor: COLORS.surface,  
+  borderRadius: 16,         
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.06,
+  shadowRadius: 6,
+  elevation: 3,
+},
+commentAuthor: {
+  fontWeight: "700",
+  fontSize: 16,               
+  color: COLORS.primary,     
+  marginBottom: 6,
+},
+commentText: {
+  fontSize: 15,
+  color: COLORS.text,
+  marginBottom: 12,
+  lineHeight: 22,          
+},
+commentMeta: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginTop: 8,
+},
+commentDate: {
+  fontSize: 12,
+  color: COLORS.textSecondary,
+  fontStyle: "italic",      
+},
+commentLike: {
+  flexDirection: "row",
+  alignItems: "center",
+},
+likeCount: {
+  fontSize: 14,
+  color: COLORS.textSecondary,
+  marginLeft: 6,             
+},
+commentInputContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  padding: 12,
+  borderTopWidth: 1,
+  borderTopColor: COLORS.textSecondary + "33",  
+  backgroundColor: COLORS.surface,
+  borderRadius: 16,         
+  marginHorizontal: 24,
+  marginVertical: 12,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.08,
+  shadowRadius: 8,
+  elevation: 5,
+},
+commentInput: {
+  flex: 1,
+  backgroundColor: COLORS.background,
+  borderRadius: 12,
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  maxHeight: 100,
+  fontSize: 15,
+  color: COLORS.text,
+  textAlignVertical: "top",
+},
+
+
+  modalOverlay: {
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: "rgba(0,0,0,0.5)"
+},
+confirmModal: {
+  backgroundColor: COLORS.surface,
+  padding: 20,
+  borderRadius: 10,
+  width: "80%",
+  alignItems: "center"
+},
+//Diseño del modal de confirmacion de eliminacion de una publicacion
+modalText: {
+  fontSize: 16,
+  color: COLORS.text,
+  textAlign: "center",
+  marginBottom: 20,
+  lineHeight: 22,
+  fontWeight: "500",
+},
+
+modalActions: {
+  flexDirection: "row",
+  justifyContent: "space-evenly",
+  width: "100%",
+  marginTop: 10,
+},
+
+modalButton: {
+  flex: 1,
+  paddingVertical: 12,
+  marginHorizontal: 8,
+  borderRadius: 30, // más redondeado
+  alignItems: "center",
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.15,
+  shadowRadius: 3,
+  elevation: 3,
+},
+
+modalButtonText: {
+  color: "white",
+  fontWeight: "bold",
+  fontSize: 15,
+  letterSpacing: 0.5,
+},
+
+
+//diseño para los botones de eliminar y modificar
+floatingButtons: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    flexDirection: "row",
+    gap: 8, // separa los iconos
+    zIndex: 10,
+    paddingRight: 15,
   },
-  commentsList: {
-    flex: 1,
-    padding: 16,
+  floatingBtn: {
+    backgroundColor: "rgba(0,0,0,0.4)", // fondo translúcido neutro
+    borderRadius: 20,
+    elevation: 3,
   },
-  commentItem: {
-    marginBottom: 16,
-    padding: 12,
-    backgroundColor: COLORS.background,
-    borderRadius: 8,
+  editIcon: {
+    backgroundColor: "rgba(0,122,255,0.85)", // azul sutil
   },
-  commentAuthor: {
-    fontWeight: "bold",
-    fontSize: 14,
-    color: COLORS.text,
-    marginBottom: 4,
+  deleteIcon: {
+    backgroundColor: "rgba(255,77,77,0.85)", // rojo sutil
   },
-  commentText: {
-    fontSize: 14,
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  commentMeta: {
+
+  //diseño para los filtros de busqueda en la parte superior
+   filtrosContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-  },
-  commentDate: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  commentLike: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  likeCount: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginLeft: -4,
-  },
-  commentInputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 8,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.1)",
-    backgroundColor: COLORS.surface,
-  },
-  commentInput: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-    borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    marginRight: 8,
-    maxHeight: 100,
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    marginBottom: 16,
   },
+  selector: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.background,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.textSecondary,
+  },
+  selectorText: {
+    color: COLORS.text,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+
 });
 
 export default BlogScreen;

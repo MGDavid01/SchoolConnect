@@ -28,6 +28,7 @@ const comentarioSchema = new Schema<IComentario>({
   },
 },
 {
+    versionKey: false,
     collection: "comentario",
 });
 
