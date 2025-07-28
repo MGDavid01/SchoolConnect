@@ -14,6 +14,7 @@ import TabTransition from "../components/TabTransition";
 import { COLORS } from "../theme/theme";
 import { Scholarship } from '../navigation/types'; // Asegúrate de que la ruta sea correcta
 import { NewsStackParamList } from './types';
+import { ScholarshipStackParamList } from '../navigation/types';
 
 import RoleListScreen from "../screens/RoleListScreen";
 import RolesNavigator from "./RolesNavigator";
@@ -34,12 +35,6 @@ export type BlogStackParamList = {
   BlogList: undefined;
   CreatePost: undefined;
 };
-
-export type ScholarshipStackParamList = {
-  ScholarshipList: undefined;
-  ScholarshipDetail: { scholarship: Scholarship };
-};
-
 
 export type CalendarStackParamList = {
   CalendarMain: undefined;
@@ -136,7 +131,7 @@ const ScholarshipNavigator: React.FC<NavigatorProps> = ({ active }) => {
               backgroundColor: COLORS.primary
             },
             headerTintColor: COLORS.surface,
-            title: "Detalle de Beca"
+            title: "Detalles del Apoyo"
           }}
         />
       </ScholarshipStack.Navigator>
@@ -178,11 +173,10 @@ const { user } = authContext;
     <Tab.Navigator
       screenOptions={{
         tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textSecondary,
+        tabBarInactiveTintColor: COLORS.secondary,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopColor: COLORS.background
+          backgroundColor: COLORS.surface
         },
         tabBarHideOnKeyboard: true
       }}

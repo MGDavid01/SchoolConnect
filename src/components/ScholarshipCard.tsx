@@ -1,34 +1,38 @@
 import React from "react"
 import { StyleSheet, View } from "react-native"
-import { Card, Title, Paragraph, Text, IconButton, Chip } from "react-native-paper"
+import { Card, Title, Paragraph, Text, Chip } from "react-native-paper"
 import { COLORS } from "../theme/theme"
 
-type Scholarship = {
-  id: string
-  title: string
-  description: string
-  amount: string
-  institution: string
-  deadline: string // fecha en formato ISO o similar
-  imageUrl?: string
-  type: string
-  educationLevel: string
-  isFavorite?: boolean
+interface Scholarship {
+  _id: string;
+  titulo: string;
+  descripcion: string;
+  requisitos: string[];
+  promedioMinimo?: number;
+  sinReprobadas?: boolean;
+  documentos?: string[];
+  condicionEspecial?: string;
+  fechaInicio: string;
+  fechaFin: string;
+  tipo: string;
+  activo: boolean;
+  autorID: string;
+  fechaPublicacion: string;
+  monto?: number;
+  institucion?: string;
 }
 
 type ScholarshipCardProps = {
   scholarship: Scholarship
   onPress: (scholarship: Scholarship) => void
-  onToggleFavorite: (id: string) => void
 }
 
 const ScholarshipCard: React.FC<ScholarshipCardProps> = ({
   scholarship,
-  onPress,
-  onToggleFavorite
+  onPress
 }) => {
   const daysUntilDeadline = () => {
-    const deadline = new Date(scholarship.deadline)
+    const deadline = new Date(scholarship.fechaFin)
     const today = new Date()
     const diffTime = deadline.getTime() - today.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
@@ -39,56 +43,46 @@ const ScholarshipCard: React.FC<ScholarshipCardProps> = ({
   const isUrgent = deadlineDays <= 7 && deadlineDays > 0
   const isExpired = deadlineDays <= 0
 
+  // Utilidad para capitalizar la primera letra
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
   return (
     <Card style={styles.card} onPress={() => onPress(scholarship)}>
-      {scholarship.imageUrl && (
-        <View style={styles.imageContainer}>
-          <Card.Cover source={{ uri: scholarship.imageUrl }} style={styles.image} />
-          <View style={styles.chipContainer}>
-            <Chip style={[styles.chip, { backgroundColor: COLORS.secondary }]} textStyle={styles.chipText}>
-              {scholarship.type}
-            </Chip>
-            <Chip style={[styles.chip, { backgroundColor: COLORS.primary }]} textStyle={styles.chipText}>
-              {scholarship.educationLevel}
-            </Chip>
-            <Chip
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: isExpired
-                    ? COLORS.error
-                    : isUrgent
-                    ? "#FFA000"
-                    : "#4CAF50"
-                }
-              ]}
-              textStyle={styles.chipText}
-            >
-              {isExpired ? "Expirada" : isUrgent ? `¡${deadlineDays} días!` : `${deadlineDays} días`}
-            </Chip>
-          </View>
+      <View style={styles.titleSection}>
+        <Title style={styles.title}>{scholarship.titulo}</Title>
+      </View>
+      
+      <Card.Content style={styles.content}>
+        <View style={styles.chipContainer}>
+          <Chip style={[styles.chip, { backgroundColor: COLORS.secondary }]} textStyle={styles.chipText}>
+            {capitalize(scholarship.tipo)}
+          </Chip>
+          <Chip
+            style={[
+              styles.chip,
+              {
+                backgroundColor: isExpired
+                  ? COLORS.error
+                  : isUrgent
+                  ? "#FFA000"
+                  : "#4CAF50"
+              }
+            ]}
+            textStyle={styles.chipText}
+          >
+            {isExpired ? "Expirada" : isUrgent ? `¡${deadlineDays} días!` : `${deadlineDays} días`}
+          </Chip>
         </View>
-      )}
-      <Card.Content>
-        <View style={styles.header}>
-          <Title style={styles.title}>{scholarship.title}</Title>
-          <IconButton
-            icon={scholarship.isFavorite ? "star" : "star-outline"}
-            iconColor={scholarship.isFavorite ? COLORS.secondary : COLORS.textSecondary}
-            size={24}
-            onPress={() => onToggleFavorite(scholarship.id)}
-          />
-        </View>
-
+        
         <Paragraph style={styles.description} numberOfLines={3}>
-          {scholarship.description}
+          {scholarship.descripcion}
         </Paragraph>
-
-        <View style={styles.footer}>
-          <Text style={styles.amount}>Monto: {scholarship.amount}</Text>
-          <Text style={styles.institution}>{scholarship.institution}</Text>
-        </View>
       </Card.Content>
+      
+      <View style={styles.footerSection}>
+        <Text style={styles.amount}>Monto: {scholarship.monto ? `$${scholarship.monto}` : '-'}</Text>
+        <Text style={styles.institution}>Institución: {scholarship.institucion ?? '-'}</Text>
+      </View>
     </Card>
   )
 }
@@ -97,76 +91,76 @@ export default ScholarshipCard
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 16,
+    marginHorizontal: 0,
     marginVertical: 8,
-    elevation: 4,
+    borderRadius: 12,
+    overflow: "hidden",
     backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    overflow: "hidden"
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.23,
+    shadowRadius: 2.62,
   },
-  imageContainer: {
-    position: "relative",
-    height: 180
+  titleSection: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  image: {
-    height: "100%"
+  content: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: COLORS.surface,
   },
   chipContainer: {
-    position: "absolute",
-    bottom: 12,
-    left: 12,
     flexDirection: "row",
-    gap: 8
+    gap: 8,
+    marginBottom: 12,
+    flexWrap: 'wrap',
   },
   chip: {
-    borderRadius: 20,
-    elevation: 3,
+    borderRadius: 16,
     height: 28,
-    alignItems: "center",
-    justifyContent: "center"
+    minWidth: 60,
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
   },
   chipText: {
-    height: "100%",
     color: COLORS.surface,
     fontSize: 12,
-    fontWeight: "bold"
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 8
+    fontWeight: "bold",
+    paddingHorizontal: 8,
+    textAlign: 'center',
   },
   title: {
-    flex: 1,
     fontSize: 18,
     fontWeight: "bold",
-    color: COLORS.primary,
-    marginRight: 8,
-    lineHeight: 24
+    color: COLORS.surface,
+    textAlign: 'center',
   },
   description: {
-    marginTop: 12,
-    fontSize: 14,
-    lineHeight: 20,
-    color: COLORS.text
+    fontSize:16,
+    color: COLORS.text,
+    textAlign: 'justify',
   },
-  footer: {
+  footerSection: {
+    backgroundColor: COLORS.secondary,
+    paddingVertical: 12,
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "space-around",
     alignItems: "center",
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)"
   },
   amount: {
     fontSize: 14,
     fontWeight: "bold",
-    color: COLORS.secondary
+    color: COLORS.surface,
   },
   institution: {
     fontSize: 12,
-    color: COLORS.textSecondary
+    color: COLORS.surface,
   }
-})
+});

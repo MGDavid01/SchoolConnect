@@ -70,7 +70,7 @@ export type NewsStackParamList = {
 
 export type ScholarshipStackParamList = {
   ScholarshipList: undefined;
-  ScholarshipDetail: { scholarship: Scholarship };
+  ScholarshipDetail: { id: string };
 };
 
 export type User = {

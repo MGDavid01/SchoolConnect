@@ -4,17 +4,15 @@ import {
   StyleSheet,
   View,
   TouchableOpacity,
-  Share,
+  Text,
 } from "react-native";
 import {
   Card,
   Title,
-  Paragraph,
-  Text,
-  IconButton,
   Chip,
 } from "react-native-paper";
 import { COLORS } from "../theme/theme";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Define el tipo de datos que esperas para "post"
 interface Post {
@@ -44,68 +42,52 @@ import { RouteProp } from '@react-navigation/native';
 const NewsDetailScreen: React.FC<NewsDetailScreenProps> = ({ route }) => {
   const { post } = route.params;
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
   };
 
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `${post.title}\n\n${post.content}\n\nCompartido desde SchoolConnect UTT`,
-        title: post.title,
-      });
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const toggleSave = () => {
-    setIsSaved(!isSaved);
-    // Aquí se podría implementar la lógica para guardar en AsyncStorage
-  };
-
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <Card style={styles.card}>
-        {post.imageUrl && <Card.Cover source={{ uri: post.imageUrl }} />}
-        <Card.Content>
+        {post.imageUrl && (
+          <View style={styles.imageContainer}>
+            <Card.Cover source={{ uri: post.imageUrl }} />
+            <View style={styles.chipOverlay}>
+              <Chip 
+                style={styles.categoryChip}
+                textStyle={styles.categoryChipText}
+              >
+                {post.category}
+              </Chip>
+            </View>
+          </View>
+        )}
+        <Card.Content style={styles.cardContent}>
           <View style={styles.header}>
             <Title style={styles.title}>{post.title}</Title>
-            <View style={styles.actions}>
-              <IconButton
-                icon={isSaved ? "bookmark" : "bookmark-outline"}
-                size={24}
-                onPress={toggleSave}
-                iconColor={COLORS.primary}
-              />
-              <IconButton
-                icon="share-variant"
-                size={24}
-                onPress={handleShare}
-                iconColor={COLORS.primary}
-              />
-            </View>
           </View>
 
           <View style={styles.metadata}>
-            <Chip style={styles.categoryChip}>{post.category}</Chip>
             <Text style={styles.date}>{post.date}</Text>
           </View>
 
-          <View>
-            <Paragraph
+          <View style={styles.contentContainer}>
+            <Text
               style={styles.content}
               numberOfLines={isExpanded ? undefined : 3}
+              ellipsizeMode="tail"
+              allowFontScaling={false}
             >
               {post.content}
-            </Paragraph>
-            <TouchableOpacity onPress={toggleExpand} style={styles.expandButton}>
-              <Text style={styles.expandText}>
-                {isExpanded ? "Ver menos" : "Ver más"}
-              </Text>
-            </TouchableOpacity>
+            </Text>
+            {post.content.length > 150 && (
+              <TouchableOpacity onPress={toggleExpand} style={styles.expandButton}>
+                <Text style={styles.expandText}>
+                  {isExpanded ? "Ver menos" : "Ver más"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.infoSection}>
@@ -113,24 +95,22 @@ const NewsDetailScreen: React.FC<NewsDetailScreenProps> = ({ route }) => {
 
             <View style={styles.contactInfo}>
               <View style={styles.contactItem}>
-                <IconButton icon="email" size={20} />
+                <MaterialCommunityIcons 
+                  name="email-outline" 
+                  size={20} 
+                  color={COLORS.primary} 
+                  style={styles.contactIcon}
+                />
                 <Text style={styles.contactText}>contacto@utt.edu.mx</Text>
               </View>
               <View style={styles.contactItem}>
-                <IconButton icon="phone" size={20} />
+                <MaterialCommunityIcons 
+                  name="phone-outline" 
+                  size={20} 
+                  color={COLORS.primary} 
+                  style={styles.contactIcon}
+                />
                 <Text style={styles.contactText}>+52 (664) 123-4567</Text>
-              </View>
-            </View>
-
-            <View style={styles.separator} />
-
-            <View style={styles.authorInfo}>
-              <IconButton icon="account" size={24} />
-              <View style={styles.authorDetails}>
-                <Text style={styles.authorName}>{post.author}</Text>
-                <Text style={styles.authorRole}>
-                  Departamento de Comunicación
-                </Text>
               </View>
             </View>
           </View>
@@ -152,48 +132,67 @@ const styles = StyleSheet.create({
     elevation: 4,
     backgroundColor: COLORS.surface,
   },
+  cardContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  imageContainer: {
+    position: 'relative',
+  },
+  chipOverlay: {
+    position: 'absolute',
+    top: 160,
+    left: 0,
+    zIndex: 1,
+  },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
     marginTop: 8,
+    marginBottom: 8,
   },
   title: {
     color: COLORS.primary,
     fontSize: 20,
     fontWeight: "bold",
-    flex: 1,
-  },
-  actions: {
-    flexDirection: "row",
+    lineHeight: 26,
   },
   metadata: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 4,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   categoryChip: {
     backgroundColor: COLORS.secondary,
     marginRight: 8,
+    elevation: 3,
+  },
+  categoryChipText: {
+    color: COLORS.surface,
+    fontWeight: 'bold',
+  },
+  contentContainer: {
+    marginBottom: 16,
   },
   content: {
     color: COLORS.text,
     fontSize: 15,
     lineHeight: 22,
-    marginTop: 8,
+    textAlign: 'justify',
+    flexWrap: 'wrap',
   },
   date: {
     fontSize: 13,
     color: COLORS.textSecondary,
   },
   expandButton: {
-    marginTop: 4,
+    marginTop: 8,
     alignSelf: "flex-start",
+    paddingVertical: 4,
   },
   expandText: {
     color: COLORS.primary,
     fontWeight: "bold",
+    fontSize: 14,
   },
   infoSection: {
     marginTop: 16,
@@ -204,43 +203,29 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     color: COLORS.primary,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   contactInfo: {
-    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   contactItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 2,
-    height: 32,
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
+    marginHorizontal: 4,
+  },
+  contactIcon: {
+    marginRight: 8,
   },
   contactText: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.text,
-    marginLeft: 0,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: "rgba(0,0,0,0.1)",
-    marginVertical: 8,
-  },
-  authorInfo: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginTop: 4,
-  },
-  authorDetails: {
     flex: 1,
-  },
-  authorName: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: COLORS.text,
-  },
-  authorRole: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
   },
 });

@@ -7,6 +7,11 @@ import roleRoutes from "./routes/role.routes";
 import authRoutes from "./routes/auth.routes";
 import publicacionesRoutes from "./routes/publications.routes"
 import reaccionRoutes from "./routes/reaccion.routes";
+import noticiaRoutes from "./routes/noticia.routes";
+import horarioRoutes from "./routes/horario.routes";
+import becaRoutes from "./routes/beca.routes";
+import calendarioEscolarRoutes from "./routes/calendario-escolar.routes";
+import iotNotificationsRoutes from "./routes/iot-notifications.routes";
 
 dotenv.config();
 
@@ -39,7 +44,12 @@ app.use((req, res, next) => {
 app.use("/api/roles", roleRoutes);    // GET /api/roles
 app.use("/api/auth", authRoutes);   // POST /api/auth/login
 app.use("/api/publicaciones", publicacionesRoutes); 
-app.use("/api/reacciones", reaccionRoutes);   
+app.use("/api/reacciones", reaccionRoutes);
+app.use("/api/noticias", noticiaRoutes);   
+app.use("/api/horario", horarioRoutes); // GET /api/horario/:grupoID
+app.use("/api/becas", becaRoutes); // GET /api/becas
+app.use("/", calendarioEscolarRoutes); // GET /api/calendario
+app.use("/api/iot-notifications", iotNotificationsRoutes); // IoT notifications routes
 
 app.get("/", (req, res) => {
   res.send("API funcionando ✅");

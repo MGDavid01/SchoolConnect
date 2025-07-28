@@ -7,7 +7,7 @@ export const COLORS = {
   surface: '#FFFFFF', // Blanco
   text: '#000000', // Negro
   textSecondary: '#4A4A4A', // Gris oscuro
-  error: '#D32F2F' // Rojo para errores
+  error: '#D32F2F', // Rojo para errores
 };
 
 export const theme = {

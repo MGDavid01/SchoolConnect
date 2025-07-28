@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ScrollView, StyleSheet, View, Share, Linking } from "react-native";
 import {
   Card,
@@ -14,7 +14,29 @@ import { RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../navigation/types"; // Asegúrate de tener definido tu tipo de navegación
 
-import { Scholarship } from "../navigation/types";
+import axios from 'axios';
+import { API_URL } from '../constants/api';
+
+interface Scholarship {
+  _id: string;
+  titulo: string;
+  descripcion: string;
+  requisitos: string[];
+  promedioMinimo?: number;
+  sinReprobadas?: boolean;
+  documentos?: string[];
+  condicionEspecial?: string;
+  fechaInicio: string;
+  fechaFin: string;
+  tipo: string;
+  activo: boolean;
+  autorID: string;
+  fechaPublicacion: string;
+  url?: string; // Nuevo campo para la URL de aplicación
+  monto?: string; // Monto de la beca
+  institucion?: string; // Institución que ofrece la beca
+  imageUrl?: string; // URL de la imagen de la beca
+}
 
 import { ScholarshipStackParamList } from "../navigation/types";
 
@@ -31,16 +53,43 @@ interface ScholarshipDetailScreenProps {
 
 
 const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route }) => {
-  const { scholarship } = route.params;
+  const { id } = route.params;
+  const [scholarship, setScholarship] = useState<Scholarship | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchScholarship = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get(`${API_URL}/api/becas/${id}`);
+        setScholarship(res.data);
+      } catch (err) {
+        setScholarship(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchScholarship();
+  }, [id]);
+
+  if (loading) return <Text style={{ margin: 20 }}>Cargando...</Text>;
+  if (!scholarship) return <Text style={{ margin: 20 }}>No se encontró la beca o programa.</Text>;
 
   /**
    * Comparte los detalles de la beca
    */
   const handleShare = async (): Promise<void> => {
     try {
+      let message = `¡Mira este apoyo!\n`;
+      message += `${scholarship.titulo}\n`;
+      if (scholarship.monto) message += `Con apoyo de: $${scholarship.monto}\n`;
+      if (scholarship.institucion) message += `Por parte de ${scholarship.institucion}\n`;
+      message += `Fecha límite: ${formatFecha(scholarship.fechaFin)}\n`;
+      if (scholarship.url) message += `\nAplica aquí: ${scholarship.url}\n`;
+      message += `\nCompartido desde SchoolConnect UTT`;
       await Share.share({
-        message: `¡Mira esta beca!\n\n${scholarship.title}\n\n${scholarship.description}\n\nFecha límite: ${scholarship.deadline}\nMonto: ${scholarship.amount}\n\nCompartido desde SchoolConnect UTT`,
-        title: scholarship.title
+        message,
+        title: scholarship.titulo
       });
     } catch (error) {
       console.error("Error al compartir:", error);
@@ -51,9 +100,12 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
    * Maneja la aplicación a la beca
    */
   const handleApply = (): void => {
-    // Aquí se implementaría la lógica para aplicar a la beca
-    console.log("Aplicando a la beca:", scholarship.title);
-    // Ejemplo: navigation.navigate("ApplyScholarship", { scholarshipId: scholarship.id });
+    if (scholarship.url) {
+      Linking.openURL(scholarship.url);
+    } else {
+      // Puedes mostrar un mensaje o deshabilitar el botón
+      alert('No hay URL de aplicación disponible para esta beca.');
+    }
   };
 
   /**
@@ -61,7 +113,7 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
    * @returns Número de días restantes (negativo si ya pasó la fecha)
    */
   const daysUntilDeadline = (): number => {
-    const deadline = new Date(scholarship.deadline);
+    const deadline = new Date(scholarship.fechaFin);
     const today = new Date();
     const diffTime = deadline.getTime() - today.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -70,6 +122,15 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
   const deadlineDays = daysUntilDeadline();
   const isUrgent = deadlineDays <= 7 && deadlineDays > 0;
   const isExpired = deadlineDays <= 0;
+
+  // Utilidad para capitalizar la primera letra
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  // Utilidad para formatear fecha
+  const formatFecha = (fecha: string) => {
+    const date = new Date(fecha);
+    return date.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -83,7 +144,7 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
 
         <Card.Content>
           <View style={styles.header}>
-            <Title style={styles.title}>{scholarship.title}</Title>
+            <Title style={styles.title}>{scholarship.titulo}</Title>
             <IconButton 
               icon="share-variant" 
               size={24} 
@@ -95,37 +156,28 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
           <View style={styles.infoSection}>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Tipo de beca:</Text>
-              <Text style={styles.value}>{scholarship.type}</Text>
+              <Text style={styles.value}>{capitalize(scholarship.tipo)}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Nivel educativo:</Text>
-              <Text style={styles.value}>{scholarship.educationLevel}</Text>
+              <Text style={styles.value}>{scholarship.condicionEspecial}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Monto:</Text>
-              <Text style={[styles.value, styles.amount]}>
-                {scholarship.amount}
-              </Text>
+              <Text style={styles.value}>{scholarship.monto ? `$${scholarship.monto}` : '-'}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Institución:</Text>
-              <Text style={styles.value}>{scholarship.institution}</Text>
+              <Text style={styles.value}>{scholarship.institucion ?? '-'}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Fecha límite:</Text>
-              <Text
-                style={[
-                  styles.value,
-                  isExpired ? styles.expired : isUrgent ? styles.urgent : null
-                ]}
-                accessibilityLabel={`Fecha límite: ${scholarship.deadline}`}
-              >
-                {scholarship.deadline}
-                {isExpired
-                  ? " (Expirada)"
-                  : isUrgent
-                  ? ` (¡${deadlineDays} días restantes!)`
-                  : ` (${deadlineDays} días restantes)`}
+              <Text style={styles.value}>{formatFecha(scholarship.fechaFin)}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Estado:</Text>
+              <Text style={[styles.value, isExpired ? styles.expired : styles.urgent]}>
+                {isExpired ? 'Expirada' : `${deadlineDays} días restantes`}
               </Text>
             </View>
           </View>
@@ -133,14 +185,14 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
           <View style={styles.descriptionSection}>
             <Title style={styles.sectionTitle}>Descripción</Title>
             <Paragraph style={styles.description}>
-              {scholarship.description}
+              {scholarship.descripcion}
             </Paragraph>
           </View>
 
           <View style={styles.requirementsSection}>
             <Title style={styles.sectionTitle}>Requisitos</Title>
             <List.Section>
-              {scholarship.requirements.map((requirement, index) => (
+              {scholarship.requisitos.map((requirement, index) => (
                 <List.Item
                   key={`requirement-${index}`}
                   title={requirement}
@@ -180,10 +232,10 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
             onPress={handleApply}
             style={[styles.applyButton, isExpired && styles.expiredButton]}
             labelStyle={styles.buttonLabel}
-            disabled={isExpired}
+            disabled={isExpired || !scholarship.url}
             accessibilityLabel={isExpired ? "Convocatoria cerrada" : "Aplicar a la beca"}
           >
-            {isExpired ? "Convocatoria cerrada" : "Aplicar ahora"}
+            {isExpired ? "Convocatoria cerrada" : scholarship.url ? "Aplicar ahora" : "Sin URL de aplicación"}
           </Button>
         </Card.Actions>
       </Card>
@@ -194,104 +246,155 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background
+    backgroundColor: COLORS.background,
+    padding: 8,
   },
   card: {
     margin: 8,
+    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.23,
+    shadowRadius: 2.62,
     elevation: 4,
-    backgroundColor: COLORS.surface
+    overflow: 'hidden',
   },
   image: {
-    height: 200
+    height: 200,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8
+    marginTop: 16,
+    paddingHorizontal: 8,
   },
   title: {
     flex: 1,
     fontSize: 24,
     fontWeight: "bold",
     color: COLORS.primary,
-    marginRight: 8
+    marginRight: 8,
+    textTransform: 'capitalize',
   },
   infoSection: {
     marginTop: 16,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#f8f8f8',
     padding: 16,
-    borderRadius: 8
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
   },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   label: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    flex: 1
+    flex: 1,
+    fontWeight: '500',
   },
   value: {
     fontSize: 14,
     color: COLORS.text,
-    fontWeight: "500",
+    fontWeight: "600",
     flex: 2,
-    textAlign: "right"
+    textAlign: "right",
   },
   amount: {
     color: COLORS.secondary,
-    fontWeight: "bold"
+    fontWeight: "bold",
+    fontSize: 16,
   },
   expired: {
-    color: COLORS.error
+    color: COLORS.error,
+    fontWeight: 'bold',
   },
   urgent: {
-    color: "#FFA000"
+    color: '#E65100',
+    fontWeight: 'bold',
   },
   descriptionSection: {
-    marginTop: 24
+    marginTop: 24,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
     fontSize: 18,
     color: COLORS.primary,
-    marginBottom: 8
+    marginBottom: 12,
+    fontWeight: 'bold',
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.secondary,
+    paddingBottom: 4,
   },
   description: {
     fontSize: 14,
     lineHeight: 22,
-    color: COLORS.text
+    color: COLORS.text,
+    textAlign: 'justify',
   },
   requirementsSection: {
-    marginTop: 12
+    marginTop: 20,
+    paddingHorizontal: 16,
   },
   requirementText: {
     fontSize: 14,
     color: COLORS.text,
-    lineHeight: 18
+    lineHeight: 20,
   },
   contactSection: {
-    marginTop: 12
+    marginTop: 20,
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   listItem: {
-    paddingVertical: 4
+    paddingVertical: 8,
+    marginVertical: 4,
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    paddingLeft: 12,
   },
   actions: {
     padding: 16,
-    justifyContent: "center"
+    justifyContent: "center",
+    backgroundColor: '#f8f8f8',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
   applyButton: {
     flex: 1,
-    backgroundColor: COLORS.primary
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    paddingVertical: 8,
+    shadowColor: COLORS.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   expiredButton: {
-    backgroundColor: COLORS.error
+    backgroundColor: COLORS.error,
   },
   buttonLabel: {
-    color: COLORS.surface
-  }
+    color: COLORS.surface,
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
 });
 
 export default ScholarshipDetailScreen;

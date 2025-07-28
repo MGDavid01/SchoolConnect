@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import {
   View,
   Text,
@@ -15,7 +15,10 @@ import { IconButton, Button } from "react-native-paper"
 import moment from "moment"
 import { COLORS } from "../theme/theme"
 import { calendarTheme } from "../theme/theme"
-import { markedDates } from "../constants/calendarEvents" // Removido markingType
+import { markedDates } from "../constants/calendarEvents"
+import axios from "axios";
+import { useAuth } from "../contexts/AuthContext";
+import { API_URL } from "../constants/api";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
@@ -46,8 +49,31 @@ type Month = {
   dateString: string;
 }
 
+// Tipos para el horario
+interface Clase {
+  horaInicio: string;
+  horaFin: string;
+  materiaID: string;
+  docenteID: string;
+  nombre?: string;
+  horasSemana?: number;
+}
 
-const SchoolCalendar: React.FC = () => {
+interface HorarioDia {
+  diaSemana: string;
+  clases: Clase[];
+}
+
+const diasSemana = [
+  "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"
+];
+
+interface SchoolCalendarProps {
+  activeTab?: 'calendario' | 'horario';
+}
+
+// CalendarView: solo la parte de calendario escolar (tab calendario)
+export const CalendarView: React.FC = () => {
   const now = new Date()
   const currentYear = now.getFullYear()
   const currentMonthIndex = now.getMonth()
@@ -73,6 +99,33 @@ const SchoolCalendar: React.FC = () => {
     date: moment().format("DD [de] MMMM [del] YYYY"),
     hasEvent: false
   })
+
+  const { user } = useAuth();
+  const [horario, setHorario] = useState<HorarioDia[]>([]);
+  const [loadingHorario, setLoadingHorario] = useState(false);
+
+  useEffect(() => {
+    const fetchHorario = async () => {
+      if (!user || user.rol !== "alumno" || !user.grupoID) return;
+      setLoadingHorario(true);
+      try {
+        const res = await axios.get(`${API_URL}/api/horario/${user.grupoID}`);
+        setHorario(res.data);
+        // Log temporal para depuración
+        console.log("Horario recibido:", res.data);
+        if (Array.isArray(res.data)) {
+          res.data.forEach((h: any) => {
+            console.log("diaSemana:", h.diaSemana, "clases:", h.clases?.length);
+          });
+        }
+      } catch (err) {
+        setHorario([]);
+      } finally {
+        setLoadingHorario(false);
+      }
+    };
+    fetchHorario();
+  }, [user]);
 
   const calendarTitle = `Calendario Escolar ${academicYearStart}-${academicYearEnd}`
 
@@ -195,130 +248,167 @@ const SchoolCalendar: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.title}>{calendarTitle}</Text>
       </View>
-
       <Animated.View
         style={[
           styles.calendarContainer,
-          { transform: [{ scale: pulseAnim }], opacity: fadeAnim }
+          { opacity: fadeAnim },
         ]}
       >
         <Calendar
           key={calendarKey}
-          markedDates={markedDatesWithSelection}
-          markingType="period"
           current={currentMonth}
-          onDayPress={handleDayPress}
-          onMonthChange={handleMonthChange}
-          firstDay={1}
-          hideExtraDays={false}
           minDate={minDate}
           maxDate={maxDate}
-          disableArrowLeft={moment(currentMonth).isSameOrBefore(
-            moment(minDate).startOf("month"),
-            "month"
-          )}
-          disableArrowRight={moment(currentMonth).isSameOrAfter(
-            moment(maxDate).startOf("month"),
-            "month"
-          )}
-          theme={{
-            ...calendarTheme,
-            backgroundColor: "#ffffff",
-            calendarBackground: "#ffffff",
-            textSectionTitleColor: "#b6c1cd",
-            selectedDayBackgroundColor: COLORS.primary,
-            selectedDayTextColor: "#ffffff",
-            todayTextColor: COLORS.primary,
-            dayTextColor: "#2d4150",
-            textDisabledColor: "#d9e1e8",
-            dotColor: COLORS.primary,
-            selectedDotColor: "#ffffff",
-            arrowColor: COLORS.primary,
-            monthTextColor: COLORS.primary,
-            indicatorColor: COLORS.primary,
-            textDayFontWeight: "300",
-            textMonthFontWeight: "bold",
-            textDayHeaderFontWeight: "300",
-            textDayFontSize: 16,
-            textMonthFontSize: 16,
-            textDayHeaderFontSize: 13
-          }}
+          onDayPress={handleDayPress}
+          onMonthChange={handleMonthChange}
+          markedDates={markedDatesWithSelection}
+          theme={calendarTheme}
+          hideExtraDays={true}
+          firstDay={1}
         />
-      </Animated.View>
-
-      <View style={styles.footer}>
         <Button
-          mode="contained"
-          onPress={handleGoToToday}
           icon="calendar-today"
+          mode="outlined"
+          onPress={handleGoToToday}
           style={styles.todayButton}
-          labelStyle={styles.buttonLabel}
+          labelStyle={{ color: COLORS.primary }}
         >
           Hoy
         </Button>
-        <Button
-          mode="contained"
-          onPress={() => setModalVisible(true)}
-          icon="calendar-search"
-          style={styles.eventsButton}
-          labelStyle={styles.buttonLabel}
-        >
-          Ver Eventos
-        </Button>
-      </View>
-
-      <View
-        style={[
-          styles.dayInfoContainer,
-          selectedDayInfo.hasEvent && styles.dayInfoWithEvent
-        ]}
-      >
-        <Text style={styles.dayInfoTitle}>{selectedDayInfo.title}</Text>
-        <Text style={styles.dayInfoDate}>{selectedDayInfo.date}</Text>
-      </View>
-
+      </Animated.View>
+      {/* Modal de evento del día */}
       <Modal
         visible={modalVisible}
-        animationType="slide"
         transparent
+        animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Eventos del Calendario</Text>
-              <IconButton icon="close" size={24} onPress={() => setModalVisible(false)} />
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.eventsListContent}>
-              {Object.entries(eventsByMonth).map(([month, events]) => (
-                <View key={month} style={styles.monthSection}>
-                  <Text style={styles.monthTitle}>{month}</Text>
-                  {events.map(event => (
                     <TouchableOpacity
-                      key={event.date}
-                      style={styles.eventItem}
-                      onPress={() => handleEventPress(event.date)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[styles.eventDot, { backgroundColor: event.color }]} />
-                      <View style={styles.eventInfo}>
-                        <Text style={styles.eventName}>{event.name}</Text>
-                        <Text style={styles.eventDate}>{moment(event.date).format("DD [de] MMMM, YYYY")}</Text>
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPressOut={() => setModalVisible(false)}
+        >
+          <View style={styles.modalContentBox}>
+            <Text style={styles.modalEventTitle}>{selectedDayInfo.title}</Text>
+            <Text style={styles.modalEventDate}>{selectedDayInfo.date}</Text>
+            {selectedDayInfo.hasEvent && (
+              <Button
+                mode="contained"
+                onPress={() => setModalVisible(false)}
+                style={styles.closeButton}
+              >
+                Cerrar
+              </Button>
+            )}
                       </View>
-                      <IconButton icon="chevron-right" size={20} iconColor={COLORS.textSecondary} />
                     </TouchableOpacity>
-                  ))}
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
       </Modal>
     </View>
-  )
+  );
 }
 
-export default SchoolCalendar
+// HorarioView: solo la parte de horario y resumen (tab horario)
+export const HorarioView: React.FC = () => {
+  const { user } = useAuth();
+  const [horario, setHorario] = useState<HorarioDia[]>([]);
+  const [loadingHorario, setLoadingHorario] = useState(false);
+
+  useEffect(() => {
+    const fetchHorario = async () => {
+      if (!user || user.rol !== "alumno" || !user.grupoID) return;
+      setLoadingHorario(true);
+      try {
+        const res = await axios.get(`${API_URL}/api/horario/${user.grupoID}`);
+        setHorario(res.data);
+        // Log temporal para depuración
+        console.log("Horario recibido:", res.data);
+        if (Array.isArray(res.data)) {
+          res.data.forEach((h: any) => {
+            console.log("diaSemana:", h.diaSemana, "clases:", h.clases?.length);
+          });
+        }
+      } catch (err) {
+        setHorario([]);
+      } finally {
+        setLoadingHorario(false);
+      }
+    };
+    fetchHorario();
+  }, [user]);
+
+  return (
+    <View style={styles.horarioContainer}>
+      <Text style={styles.horarioTitle}>Horario de clases</Text>
+      {loadingHorario ? (
+        <Text style={styles.horarioLoading}>Cargando horario...</Text>
+      ) : horario.length === 0 ? (
+        <Text style={styles.horarioEmpty}>No hay horario registrado</Text>
+      ) : (
+        <>
+          {diasSemana.map(dia => {
+            const diaData = horario.find(h => h.diaSemana.toLowerCase() === dia);
+            return (
+              <View key={dia} style={styles.horarioDiaRow}>
+                <Text style={styles.horarioDia}>{dia.charAt(0).toUpperCase() + dia.slice(1)}</Text>
+                <View style={styles.tablaHeader}>
+                  <Text style={styles.tablaHeaderColHora}>Hora</Text>
+                  <Text style={styles.tablaHeaderColMateria}>Materia</Text>
+                </View>
+                {diaData && diaData.clases.length > 0 ? (
+                  diaData.clases.map((clase, idx) => (
+                    <View key={idx} style={styles.tablaRow}>
+                      <Text style={styles.tablaColHora}>{clase.horaInicio} - {clase.horaFin}</Text>
+                      <Text style={styles.tablaColMateria}>{clase.nombre || clase.materiaID}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.horarioSinClase}>Sin clases</Text>
+                )}
+              </View>
+            );
+          })}
+          {/* Resumen de horas y docentes por materia */}
+          <View style={styles.resumenContainer}>
+            <Text style={styles.resumenTitle}>Resumen de materias</Text>
+            {(() => {
+              // Calcular resumen por materia
+              const materiaResumen: Record<string, { nombre: string, horas: number, docentes: Set<string> }> = {};
+              horario.forEach(h => {
+                h.clases.forEach(c => {
+                  if (!c.materiaID) return;
+                  const key = c.materiaID;
+                  if (!materiaResumen[key]) {
+                    materiaResumen[key] = { nombre: c.nombre || c.materiaID, horas: 0, docentes: new Set() };
+                  }
+                  if (typeof c.horasSemana === 'number') {
+                    materiaResumen[key].horas = c.horasSemana;
+                  }
+                  if (c.docenteID) {
+                    materiaResumen[key].docentes.add(c.docenteID);
+                  }
+                });
+              });
+              const resumenArr = Object.values(materiaResumen);
+              return resumenArr.length === 0 ? (
+                <Text style={styles.resumenEmpty}>No hay materias</Text>
+              ) : (
+                resumenArr.map((m, idx) => (
+                  <View key={idx} style={styles.resumenRow}>
+                    <View style={{flex: 1}}>
+                      <Text style={styles.resumenMateria}>{m.nombre}</Text>
+                      <Text style={styles.resumenDocente}>Docente(s): {Array.from(m.docentes).join(", ")}</Text>
+                    </View>
+                    <Text style={styles.resumenHoras}>{m.horas} h/semana</Text>
+                  </View>
+                ))
+              );
+            })()}
+          </View>
+        </>
+      )}
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#fff" },
@@ -361,49 +451,181 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end"
+    justifyContent: "center", // Changed to center for fade effect
+    alignItems: "center"
   },
-  modalContent: {
+  modalContentBox: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: SCREEN_HEIGHT * 0.8,
-    minHeight: SCREEN_HEIGHT * 0.6
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    borderRadius: 15,
+    padding: 20,
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-    paddingBottom: 8
+    width: "80%",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4
   },
-  modalTitle: { fontSize: 20, fontWeight: "bold", color: COLORS.primary },
-  eventsListContent: { paddingHorizontal: 16, paddingBottom: 24 },
-  monthSection: { marginTop: 16 },
-  monthTitle: {
+  modalEventTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: COLORS.primary,
+    marginBottom: 8,
+    textAlign: "center"
+  },
+  modalEventDate: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    marginBottom: 15,
+    textAlign: "center"
+  },
+  closeButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    width: "100%"
+  },
+  horarioContainer: {
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.secondary
+  },
+  horarioTitle: {
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 8,
     color: COLORS.primary
   },
-  eventItem: {
+  horarioLoading: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: "center"
+  },
+  horarioEmpty: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: "center"
+  },
+  horarioDiaRow: {
+    marginBottom: 18,
+    paddingBottom: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.secondary,
+    backgroundColor: COLORS.surface,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingTop: 8,
+    paddingVertical: 8,
+    elevation: 1,
+  },
+  horarioDia: {
+    fontSize: 17,
+    fontWeight: "bold",
+    color: COLORS.primary,
+    marginBottom: 6,
+    marginLeft: 2,
+  },
+  tablaHeader: {
+    flexDirection: "row",
+    backgroundColor: COLORS.secondary,
+    borderRadius: 6,
+    paddingVertical: 4,
+    marginBottom: 2,
+    marginHorizontal: 2,
+  },
+  tablaHeaderColHora: {
+    flex: 1.2,
+    color: COLORS.surface,
+    fontWeight: "bold",
+    fontSize: 13,
+    textAlign: "center",
+  },
+  tablaHeaderColMateria: {
+    flex: 2.2,
+    color: COLORS.surface,
+    fontWeight: "bold",
+    fontSize: 13,
+    textAlign: "center",
+  },
+  tablaRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    marginBottom: 8,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.background,
+    paddingVertical: 3,
+    marginHorizontal: 2,
   },
-  eventDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
-  eventInfo: { flex: 1 },
-  eventName: { fontSize: 16, fontWeight: "500" },
-  eventDate: { fontSize: 14, color: COLORS.textSecondary, marginTop: 4 }
+  tablaColHora: {
+    flex: 1.2,
+    color: COLORS.text,
+    fontSize: 13,
+    textAlign: "center",
+  },
+  tablaColMateria: {
+    flex: 2.2,
+    color: COLORS.primary,
+    fontWeight: "bold",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  resumenContainer: {
+    marginTop: 18,
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
+    padding: 12,
+    elevation: 1,
+  },
+  resumenTitle: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: COLORS.secondary,
+    marginBottom: 8,
+  },
+  resumenRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+    paddingVertical: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.surface,
+  },
+  resumenMateria: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  resumenHoras: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  resumenDocente: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    fontStyle: "italic",
+    marginTop: 2,
+  },
+  resumenEmpty: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    textAlign: "center",
+  },
+  horarioClases: {
+    flexDirection: "column"
+  },
+  horarioClase: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: 2
+  },
+  horarioSinClase: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: "center"
+  }
 })
