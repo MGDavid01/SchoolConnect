@@ -18,25 +18,28 @@ import { COLORS } from "../theme/theme";
 import axios from "axios";
 import { API_URL } from "../constants/api";
 import { useAuth } from "../contexts/AuthContext";
+import { Snackbar } from "react-native-paper";
 
 const EditPostScreen = () => {
   const route = useRoute<RouteProp<BlogStackParamList, "EditPost">>();
   const navigation = useNavigation();
   const { post } = route.params;
   const { user } = useAuth();
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarType, setSnackbarType] = useState<"success" | "error">("success");
 
   const [contenido, setContenido] = useState(post.content);
   const [tipo, setTipo] = useState<"normal" | "ayuda" | "pregunta" | "aviso">(
     (post.tipo as any) || "normal"
   );
   const [visibilidad, setVisibilidad] = useState<"todos" | "grupo">(
-    (post.categoria as "todos" | "grupo") || "todos"
+    (post.visibilidad as "todos" | "grupo") || "todos"
   );
   const [tipoMenuVisible, setTipoMenuVisible] = useState(false);
   const [visibilidadMenuVisible, setVisibilidadMenuVisible] = useState(false);
 
   const buttonScale = new Animated.Value(1);
-
   const handleGuardarCambios = async () => {
     try {
       await axios.patch(`${API_URL}/api/publicaciones/${post.id}`, {
@@ -45,11 +48,24 @@ const EditPostScreen = () => {
         visibilidad,
         userID: user?._id,
       });
-      navigation.goBack();
+
+      setSnackbarMessage("Publicación actualizada con éxito.");
+      setSnackbarType("success");
+      setSnackbarVisible(true);
+
+      // Redirigir después de 2 segundos
+      setTimeout(() => {
+        setSnackbarVisible(false);
+        navigation.goBack();
+      }, 2000);
     } catch (error) {
       console.error("Error al actualizar publicación:", error);
+      setSnackbarMessage("Error al actualizar la publicación.");
+      setSnackbarType("error");
+      setSnackbarVisible(true);
     }
   };
+
 
   const animateButton = (to: number) => {
     Animated.timing(buttonScale, {
@@ -155,6 +171,17 @@ const EditPostScreen = () => {
           </TouchableOpacity>
         </Animated.View>
       </ScrollView>
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={2000}
+        style={{
+          backgroundColor: snackbarType === "success" ? COLORS.primary : "red",
+        }}
+      >
+        <Text style={{ color: "white", textAlign: "center" }}>{snackbarMessage}</Text>
+      </Snackbar>
+
     </KeyboardAvoidingView>
   );
 };

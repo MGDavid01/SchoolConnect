@@ -19,6 +19,7 @@ import {
   IconButton,
   Searchbar,
   FAB,
+  Menu,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "../theme/theme";
@@ -55,11 +56,27 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
           console.error("❌ Error al cargar comentarios", error);
         }
       };
-
+ const [filtroVisibilidad, setFiltroVisibilidad] = useState<"todos" | "grupo">("todos");
+  const [filtroTipo, setFiltroTipo] = useState<"todas" | "normal" | "ayuda" | "pregunta" | "aviso">("todas");
+  const [visibilidadMenuVisible, setVisibilidadMenuVisible] = useState(false);
+  const [tipoMenuVisible, setTipoMenuVisible] = useState(false);
       
  const fetchPosts = async () => {
-    try {
-      const publicacionesRes = await axios.get(`${API_URL}/api/publicaciones`);
+    if (!user) return; // aseguramos que hay usuario logueado
+  try {
+    console.log("Filtro visibilidad:", filtroVisibilidad);
+    console.log("Grupo del usuario:", user.grupoID);
+    console.log("Filtro tipo:", filtroTipo);
+
+    const publicacionesRes = await axios.get(`${API_URL}/api/publicaciones`, {
+      params: { 
+        filtroVisibilidad, // <-- ahora lo enviamos explícitamente
+        grupoID: user.grupoID, // <-- siempre lo enviamos, el backend decidirá si usarlo
+        tipo: filtroTipo !== "todas" ? filtroTipo : undefined,
+      }
+    });
+
+      
       const publicaciones = publicacionesRes.data;
 
       const conteoRes = await axios.get(`${API_URL}/api/reacciones/conteo`);
@@ -84,6 +101,8 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
         author: item.autorNombre,
         date: new Date(item.fecha).toISOString().split("T")[0],
         category: item.visibilidad === "todos" ? "Público" : "Grupo",
+        visibilidad: item.visibilidad,   // <-- añadir esto
+        tipo: item.tipo, 
         imageUrl: item.imagenURL || "",
         likes: conteos[item._id]?.like || 0,
         dislikes: conteos[item._id]?.dislike || 0,
@@ -97,17 +116,23 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
     }
   };
 
-  // Ejecuta fetchPosts al montar el componente
-  useEffect(() => {
+useEffect(() => {  
+  console.log("Filtro visibilidad:", filtroVisibilidad);
+  console.log("Grupo del usuario:", user?.grupoID);
+  console.log("Filtro tipo:", filtroTipo);
+  if (user?.grupoID) {
     fetchPosts();
-  }, []);
+  }
+}, [filtroVisibilidad, filtroTipo, user?.grupoID]);
 
-  // Ejecuta fetchPosts cuando se regresa a la pantalla
-  useFocusEffect(
-    useCallback(() => {
-      fetchPosts();
-    }, [])
-  );
+useFocusEffect(
+  useCallback(() => {
+    fetchPosts();
+  }, [filtroVisibilidad, filtroTipo, user?.grupoID])
+);
+
+
+  
 
   const [searchQuery, setSearchQuery] = useState("");
   const [commentModalVisible, setCommentModalVisible] = useState(false);
@@ -115,6 +140,8 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
   const [newComment, setNewComment] = useState("");
   const [userReactions, setUserReactions] = useState<Record<string, "like" | "dislike" | null>>({});
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
+
+ 
 
   const inputRef = useRef<TextInput>(null);
 
@@ -305,28 +332,28 @@ const handleAddComment = async () => {
       };
 
       const scaleAnim = useRef(new Animated.Value(0.8)).current;  // escala inicial
-const opacityAnim = useRef(new Animated.Value(0)).current;  // opacidad inicial
-useEffect(() => {
-  if (deleteModalVisible) {
-    Animated.parallel([
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 250, // un poco más lento para suavidad
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 250,
-        easing: Easing.out(Easing.ease), // suavizado
-        useNativeDriver: true,
-      }),
-    ]).start();
-  } else {
-    // Al cerrar, se restablecen valores
-    opacityAnim.setValue(0);
-    scaleAnim.setValue(0.9); // empieza un poco más grande para cuando se abra de nuevo
-  }
-}, [deleteModalVisible]);
+      const opacityAnim = useRef(new Animated.Value(0)).current;  // opacidad inicial
+      useEffect(() => {
+        if (deleteModalVisible) {
+          Animated.parallel([
+            Animated.timing(opacityAnim, {
+              toValue: 1,
+              duration: 250, // un poco más lento para suavidad
+              useNativeDriver: true,
+            }),
+            Animated.timing(scaleAnim, {
+              toValue: 1,
+              duration: 250,
+              easing: Easing.out(Easing.ease), // suavizado
+              useNativeDriver: true,
+            }),
+          ]).start();
+        } else {
+          // Al cerrar, se restablecen valores
+          opacityAnim.setValue(0);
+          scaleAnim.setValue(0.9); // empieza un poco más grande para cuando se abra de nuevo
+        }
+      }, [deleteModalVisible]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -338,9 +365,60 @@ useEffect(() => {
           style={styles.searchbar}
         />
       </View>
+      <View style={styles.filtrosContainer}>
+      {/* Filtro visibilidad */}
+      <Menu
+        visible={visibilidadMenuVisible}
+        onDismiss={() => setVisibilidadMenuVisible(false)}
+        anchor={
+          <TouchableOpacity onPress={() => setVisibilidadMenuVisible(true)} style={styles.selector}>
+            <Text style={styles.selectorText}>
+              {filtroVisibilidad === "todos" ? "Todos" : "Mi grupo"}
+            </Text>
+          </TouchableOpacity>
+        }
+      >
+        <Menu.Item 
+          onPress={() => {
+            setFiltroVisibilidad("todos");
+            setVisibilidadMenuVisible(false);
+          }} 
+          title="Todos" 
+        />
+        <Menu.Item 
+          onPress={() => {
+            setFiltroVisibilidad("grupo");
+            setVisibilidadMenuVisible(false);
+          }} 
+          title="Mi grupo" 
+        />
+      </Menu>
+
+      {/* Filtro tipo */}
+      <Menu
+        visible={tipoMenuVisible}
+        onDismiss={() => setTipoMenuVisible(false)}
+        anchor={
+          <TouchableOpacity onPress={() => setTipoMenuVisible(true)} style={styles.selector}>
+            <Text style={styles.selectorText}>
+              {filtroTipo === "todas" ? "Todas" : filtroTipo.charAt(0).toUpperCase() + filtroTipo.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        }
+      >
+        {["todas", "normal", "ayuda", "pregunta", "aviso"].map((op) => (
+          <Menu.Item
+            key={op}
+            onPress={() => setFiltroTipo(op as any)}
+            title={op === "todas" ? "Todas" : op.charAt(0).toUpperCase() + op.slice(1)}
+          />
+        ))}
+      </Menu>
+    </View>
+
 
       <ScrollView>
-  {filteredPosts.map((post) => (
+    {filteredPosts.map((post) => (
     <View key={post.id}>
       <BlogCard
         post={post}
@@ -765,6 +843,30 @@ floatingButtons: {
   },
   deleteIcon: {
     backgroundColor: "rgba(255,77,77,0.85)", // rojo sutil
+  },
+
+  //diseño para los filtros de busqueda en la parte superior
+   filtrosContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  selector: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.background,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.textSecondary,
+  },
+  selectorText: {
+    color: COLORS.text,
+    fontWeight: "600",
+    fontSize: 14,
   },
 
 });

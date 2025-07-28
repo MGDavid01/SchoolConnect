@@ -124,6 +124,8 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({
         author: item.autorNombre,
         date: new Date(item.fecha).toISOString().split("T")[0],
         category: item.visibilidad === "todos" ? "Público" : "Grupo",
+        visibilidad: item.visibilidad,   // <-- añadir esto
+        tipo: item.tipo, 
         imageUrl: item.imagenURL || "",
         likes: conteos[item._id]?.like || 0,
         dislikes: conteos[item._id]?.dislike || 0,

@@ -94,6 +94,7 @@ export interface Comment {
 }
 
 export interface BlogPost {
+  visibilidad: "todos" | "grupo";
   categoria: "todos" | "grupo";
   tipo: any;
   id: string;

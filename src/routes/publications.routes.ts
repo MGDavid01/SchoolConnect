@@ -8,24 +8,44 @@ import {ComentarioModel} from "../models/Comentario";
 
 const router = express.Router();
 
-// Obtener todas las publicaciones activas
+
 router.get("/", async (req, res) => {
   try {
+    const { grupoID, tipo, filtroVisibilidad } = req.query;
+
+    const matchStage: any = { activo: true };
+
+    // Filtrado según visibilidad y grupo
+    if (filtroVisibilidad === "todos") {
+      matchStage.$or = [
+        { visibilidad: "todos" },
+        { visibilidad: "grupo", grupoID: String(grupoID) }
+      ];
+    } else if (filtroVisibilidad === "grupo") {
+      matchStage.$or = [
+        { visibilidad: "todos", grupoID: String(grupoID) },
+        { visibilidad: "grupo", grupoID: String(grupoID) }
+      ];
+    }
+
+    // Filtrar por tipo (normal, ayuda, etc.)
+    if (tipo && tipo !== "todas") {
+      matchStage.tipo = tipo;
+    }
+
+    console.log(">>> Filtro final en el backend:", JSON.stringify(matchStage, null, 2));
+
     const publicaciones = await PublicacionModel.aggregate([
       {
         $lookup: {
-          from: "usuarios", // nombre real de la colección de usuarios en tu base
+          from: "usuarios",
           localField: "autorID",
           foreignField: "_id",
           as: "autor",
         },
       },
-      {
-        $unwind: "$autor",
-      },
-      {
-        $match: { activo: true },
-      },
+      { $unwind: "$autor" },
+      { $match: matchStage },
       {
         $project: {
           _id: 1,
@@ -35,22 +55,26 @@ router.get("/", async (req, res) => {
           visibilidad: 1,
           imagenURL: 1,
           autorID: 1,
+          grupoID: 1,
           autorNombre: {
             $concat: [
-                "$autor.nombre"," ",
-                "$autor.apellidoPaterno"," ",
-                "$autor.apellidoMaterno"
-            ]
-          }
+              "$autor.nombre", " ",
+              "$autor.apellidoPaterno", " ",
+              "$autor.apellidoMaterno",
+            ],
+          },
         },
       },
+      { $sort: { fecha: -1 } },
     ]);
+
     res.json(publicaciones);
   } catch (error) {
     console.error("Error al obtener publicaciones:", error);
     res.status(500).json({ message: "Error al obtener publicaciones" });
   }
 });
+
 
 
 // Crear una nueva publicación

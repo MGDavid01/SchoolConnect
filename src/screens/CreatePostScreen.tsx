@@ -16,6 +16,8 @@ import { useAuth } from "../contexts/AuthContext"; // Asegúrate de que esta rut
 import { COLORS } from "../theme/theme";
 import axios from "axios";
 import { API_URL } from "../constants/api";
+import { Snackbar } from "react-native-paper";
+
 
 const CreatePostScreen = () => {
   const navigation = useNavigation();
@@ -28,34 +30,49 @@ const CreatePostScreen = () => {
   const [tipoMenuVisible, setTipoMenuVisible] = useState(false);
   const [visibilidadMenuVisible, setVisibilidadMenuVisible] = useState(false);
 
-const handlePublicar = async () => {
-  if (!contenido.trim()) {
-    alert("Debes escribir contenido para publicar.");
-    return;
-  }
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarType, setSnackbarType] = useState<"success" | "error">("success");
 
-  try {
-    const nuevaPublicacion = {
-      autorID: user?._id,
-      contenido: contenido.trim(),
-      grupoID: user?.grupoID,
-      tipo,
-      visibilidad,
-      fecha: new Date(),
-      activo: true,
-    };
 
-    const response = await axios.post(`${API_URL}/api/publicaciones`, nuevaPublicacion);
-
-    if (response.status === 201) {
-      alert("Publicación creada con éxito.");
-      navigation.goBack();
+  const handlePublicar = async () => {
+    if (!contenido.trim()) {
+      setSnackbarMessage("Debes escribir contenido para publicar.");
+      setSnackbarType("error");
+      setSnackbarVisible(true);
+      return;
     }
-  } catch (error) {
-    console.error("Error al publicar:", error);
-    alert("No se pudo publicar. Revisa tu conexión o el servidor.");
-  }
-};
+
+    try {
+      const nuevaPublicacion = {
+        autorID: user?._id,
+        contenido: contenido.trim(),
+        grupoID: user?.grupoID,
+        tipo,
+        visibilidad,
+        fecha: new Date(),
+        activo: true,
+      };
+
+      const response = await axios.post(`${API_URL}/api/publicaciones`, nuevaPublicacion);
+
+      if (response.status === 201) {
+        setSnackbarMessage("Publicación creada con éxito.");
+        setSnackbarType("success");
+        setSnackbarVisible(true);
+
+        setTimeout(() => {
+          setSnackbarVisible(false);
+          navigation.goBack();
+        }, 2000);
+      }
+    } catch (error) {
+      console.error("Error al publicar:", error);
+      setSnackbarMessage("No se pudo publicar. Revisa tu conexión o el servidor.");
+      setSnackbarType("error");
+      setSnackbarVisible(true);
+    }
+  };
 
 
   return (
@@ -144,7 +161,18 @@ const handlePublicar = async () => {
         </View>
 
       </ScrollView>
+     <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={2000}
+        style={{
+          backgroundColor: snackbarType === "success" ? COLORS.primary : "red",
+        }}
+      >
+        <Text style={{ color: "white", textAlign: "center" }}>{snackbarMessage}</Text>
+      </Snackbar>
     </KeyboardAvoidingView>
+    
   );
 };
 
@@ -297,6 +325,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 26,
     color: COLORS.text
-  }
+  },
+  //CSS para el modal que aparece de confirmacion o error
+
+  modalOverlay: {
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: "rgba(0,0,0,0.4)",
+},
+modalContent: {
+  backgroundColor: COLORS.surface,
+  padding: 20,
+  borderRadius: 12,
+  minWidth: "70%",
+  alignItems: "center",
+  elevation: 5,
+},
+modalText: {
+  fontSize: 16,
+  fontWeight: "600",
+  color: COLORS.text,
+  textAlign: "center",
+},
+modalSuccess: {
+  borderColor: COLORS.primary,
+  borderWidth: 2,
+},
+modalError: {
+  borderColor: "red",
+  borderWidth: 2,
+},
+
 });
 
