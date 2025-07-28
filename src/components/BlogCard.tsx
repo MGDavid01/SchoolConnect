@@ -13,6 +13,9 @@ interface BlogCardProps {
   onComment: (post: BlogPost) => void;
   onViewMore: () => void;
   comentarioCount: number;
+  extraActions?: React.ReactNode;
+  isSaved?: boolean;
+  onToggleSave?: (postId: string, isSaved: boolean) => void; 
 }
 
 const BlogCard = ({
@@ -23,6 +26,9 @@ const BlogCard = ({
   onReact,
   onComment,
   comentarioCount,
+  extraActions,
+  isSaved,
+  onToggleSave
 }: BlogCardProps) => {
   const avatarLetter = post.author?.charAt(0).toUpperCase() || "?";
 
@@ -40,6 +46,7 @@ const BlogCard = ({
           <Text style={styles.author}>{post.author}</Text>
           <Text style={styles.date}>{post.date}</Text>
         </View>
+        {extraActions}
       </View>
 
       {/* Imagen */}
@@ -84,11 +91,22 @@ const BlogCard = ({
             />
             <Text style={styles.reactionCount}>{post.dislikes}</Text>
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.reactionBtn} onPress={() => onComment(post)}>
             <IconButton icon="comment-outline" size={22} iconColor={COLORS.primary} />
             <Text style={styles.reactionCount}>{comentarioCount}</Text>
           </TouchableOpacity>
+          {onToggleSave && (
+            <TouchableOpacity
+              style={styles.reactionBtn}
+              onPress={() => onToggleSave(post.id, isSaved || false)}
+            >
+              <IconButton
+                icon={isSaved ? "bookmark" : "bookmark-outline"}
+                size={22}
+                iconColor={isSaved ? COLORS.primary : COLORS.textSecondary}
+              />
+            </TouchableOpacity>
+          )}
         </View>
       </Card.Content>
     </Card>
@@ -107,6 +125,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
     overflow: "hidden",
+    maxWidth: 500,           
+    alignSelf: "center",    
+    width: "100%",
+    position: "relative", 
   },
   header: {
     flexDirection: "row",
@@ -152,10 +174,11 @@ const styles = StyleSheet.create({
   },
   actionsRow: {
     flexDirection: "row",
+    justifyContent: "center", 
     alignItems: "center",
-    marginTop: 10,
-    paddingHorizontal: 8,
-    paddingBottom: 10,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   reactionBtn: {
     flexDirection: "row",
@@ -166,6 +189,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textSecondary,
   },
+  iconContainer: {
+  position: "absolute",
+  bottom: 10,
+  right: 40,
+  backgroundColor: COLORS.surface,
+  borderRadius: 20,
+  elevation: 3,
+},
+
 });
 
 export default BlogCard;

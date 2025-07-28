@@ -108,6 +108,7 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
         dislikes: conteos[item._id]?.dislike || 0,
         comments: [],
         type: "blog",
+        guardada: savedPosts.includes(item._id),
       }));
 
       setPosts(parsedPosts);
@@ -131,6 +132,19 @@ useFocusEffect(
   }, [filtroVisibilidad, filtroTipo, user?.grupoID])
 );
 
+useEffect(() => {
+  const fetchSaved = async () => {
+    if (!user?._id) return;
+    try {
+      const res = await axios.get(`${API_URL}/api/guardados/${user._id}`);
+      const savedIDs = res.data.map((p: any) => p._id || p.id);
+      setSavedPosts(savedIDs);
+    } catch (error) {
+      console.error("Error al cargar guardados:", error);
+    }
+  };
+  fetchSaved();
+}, [user?._id]);
 
   
 
@@ -140,6 +154,34 @@ useFocusEffect(
   const [newComment, setNewComment] = useState("");
   const [userReactions, setUserReactions] = useState<Record<string, "like" | "dislike" | null>>({});
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
+  const [savedPosts, setSavedPosts] = useState<string[]>([]);
+
+
+const toggleGuardar = async (postId: string, yaGuardada: boolean) => {
+  try {
+    if (yaGuardada) {
+      await axios.delete(`${API_URL}/api/guardados`, {
+        data: { usuarioID: user?._id, publicacionID: postId },
+      });
+      setSavedPosts((prev) => prev.filter((id) => id !== postId));
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, guardada: false } : p))
+      );
+    } else {
+      await axios.post(`${API_URL}/api/guardados`, {
+        usuarioID: user?._id,
+        publicacionID: postId,
+      });
+      setSavedPosts((prev) => [...prev, postId]);
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, guardada: true } : p))
+      );
+    }
+  } catch (error) {
+    console.error("Error al guardar/quitar publicación:", error);
+  }
+};
+
 
  
 
@@ -431,32 +473,34 @@ const handleAddComment = async () => {
           // lógica que quieras para ver más
         }}
         comentarioCount={conteoComentarios[post.id] || 0}
+        extraActions={
+          post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`
+            ? (
+              <View style={styles.floatingButtons}>
+                <IconButton
+                  icon="pencil"
+                  size={20}
+                  onPress={() => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
+                  style={[styles.floatingBtn, styles.editIcon]}
+                  iconColor="white"
+                />
+                <IconButton
+                  icon="delete"
+                  size={20}
+                  onPress={() => handleEliminar(post.id)}
+                  style={[styles.floatingBtn, styles.deleteIcon]}
+                  iconColor="white"
+                />
+              </View>
+            )
+            : null
+        }
+        isSaved={savedPosts.includes(post.id)} 
+        onToggleSave={toggleGuardar}   
       />
-
-      {/* Botón de eliminar (solo si es del usuario actual) */}
-      {post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}` && (
-      <>
-      <View style={styles.floatingButtons}>
-        <IconButton
-          icon="pencil"
-          size={20}
-          onPress={() => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
-          style={[styles.floatingBtn, styles.editIcon]}
-          iconColor="white"
-        />
-        <IconButton
-          icon="delete"
-          size={20}
-          onPress={() => handleEliminar(post.id)}
-          style={[styles.floatingBtn, styles.deleteIcon]}
-          iconColor="white"
-        />
-      </View>
-    </>
-    )}
-
     </View>
   ))}
+
 </ScrollView>
       <FAB
         icon="plus"
@@ -489,6 +533,7 @@ const handleAddComment = async () => {
                 selectedPost.comments.map((comment) => (
                   <View key={comment.id} style={styles.commentItem}>
                     <Text style={styles.commentAuthor}>{comment.author}</Text>
+                    
                     <Text style={styles.commentText}>{comment.content}</Text>
                     <View style={styles.commentMeta}>
                       <Text style={styles.commentDate}>{comment.date}</Text>
@@ -806,7 +851,7 @@ modalButton: {
   flex: 1,
   paddingVertical: 12,
   marginHorizontal: 8,
-  borderRadius: 30, // más redondeado
+  borderRadius: 30, 
   alignItems: "center",
   shadowColor: "#000",
   shadowOffset: { width: 0, height: 2 },
@@ -822,8 +867,7 @@ modalButtonText: {
   letterSpacing: 0.5,
 },
 
-
-//diseño para los botones de eliminar y modificar
+//diseño de los botones de eliminar y modificar
 floatingButtons: {
     position: "absolute",
     top: 8,
@@ -834,15 +878,15 @@ floatingButtons: {
     paddingRight: 15,
   },
   floatingBtn: {
-    backgroundColor: "rgba(0,0,0,0.4)", // fondo translúcido neutro
+    backgroundColor: "rgba(0,0,0,0.4)", 
     borderRadius: 20,
     elevation: 3,
   },
   editIcon: {
-    backgroundColor: "rgba(0,122,255,0.85)", // azul sutil
+    backgroundColor: "rgba(0,122,255,0.85)", 
   },
   deleteIcon: {
-    backgroundColor: "rgba(255,77,77,0.85)", // rojo sutil
+    backgroundColor: "rgba(255,77,77,0.85)", 
   },
 
   //diseño para los filtros de busqueda en la parte superior

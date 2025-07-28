@@ -9,6 +9,7 @@ import publicacionesRoutes from "./routes/publications.routes"
 import reaccionRoutes from "./routes/reaccion.routes";
 import comentarioRoutes from "./routes/comentario.routes";
 import userRoutes from "./routes/user.routes";
+import guardadoRoutes from "./routes/save.route";
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ app.use("/api/publicaciones", publicacionesRoutes);
 app.use("/api/reacciones", reaccionRoutes);   
 app.use("/api/comentarios", comentarioRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/guardados", guardadoRoutes);
 
 app.get("/", (req, res) => {
   res.send("API funcionando ✅");

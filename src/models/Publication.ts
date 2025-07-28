@@ -16,7 +16,7 @@ const publicationSchema = new Schema<IPublication>({
     type: String,
     required: true,
   },
-  contenido: {
+  contenido: {  
     type: String,
     required: true,
     trim: true,
