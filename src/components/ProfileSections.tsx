@@ -60,6 +60,7 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({
   >(null);
 
   const [userComments, setUserComments] = useState<any[]>([]);
+  const [savedPosts, setSavedPosts] = useState<string[]>([]);
 
 
   // Carga de publicaciones según sección activa
@@ -131,6 +132,7 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({
         dislikes: conteos[item._id]?.dislike || 0,
         comments: [], // inicial vacío, se llena al abrir modal
         type: "blog",
+        guardada: savedPosts.includes(item._id),
       }));
 
       setPosts(parsedPosts);
@@ -148,6 +150,31 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({
       fetchPosts();
     }, [activeSection])
   );
+
+  const toggleGuardar = async (postId: string, yaGuardada: boolean) => {
+  try {
+    if (yaGuardada) {
+      await axios.delete(`${API_URL}/api/guardados`, {
+        data: { usuarioID: user?._id, publicacionID: postId },
+      });
+      setSavedPosts((prev) => prev.filter((id) => id !== postId));
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, guardada: false } : p))
+      );
+    } else {
+      await axios.post(`${API_URL}/api/guardados`, {
+        usuarioID: user?._id,
+        publicacionID: postId,
+      });
+      setSavedPosts((prev) => [...prev, postId]);
+      setPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, guardada: true } : p))
+      );
+    }
+  } catch (error) {
+    console.error("Error al guardar/quitar publicación:", error);
+  }
+};
 
   // Reacciones like/dislike
   const handleReaction = async (postId: string, type: "like" | "dislike") => {
@@ -180,6 +207,8 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({
       // Actualizamos conteos y reacciones
       const conteoRes = await axios.get(`${API_URL}/api/reacciones/conteo`);
       const conteos = conteoRes.data;
+
+
 
       // Actualizamos posts con nuevos conteos
       setPosts((prevPosts) =>
@@ -332,6 +361,23 @@ const confirmDeletePost = async () => {
   );
 };
 
+useEffect(() => {
+  const fetchSavedPosts = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/guardados/${user?._id}`);
+      // El backend debería devolver un array con los objetos de publicación o sus IDs
+      const savedIDs = res.data.map((p: any) => p._id || p.id);
+      setSavedPosts(savedIDs);
+    } catch (error) {
+      console.error("Error al obtener publicaciones guardadas:", error);
+    }
+  };
+
+  if (user?._id) {
+    fetchSavedPosts();
+  }
+}, [user]);
+
 
   const sections: { key: SectionKey; label: string }[] = [
     { key: "publicaciones", label: "Publicaciones" },
@@ -392,7 +438,44 @@ const confirmDeletePost = async () => {
       {/* Contenido */}
       <View style={styles.sectionContent}>
         {activeSection === "guardados" ? (
-          <Text style={styles.emptyText}>Esta sección está en construcción.</Text>
+         <ScrollView>
+          {posts
+            .filter((post) => savedPosts.includes(post.id)) // Solo publicaciones guardadas
+            .map((post) => (
+              <View key={post.id} style={{ marginBottom: 20 }}>
+                <BlogCard
+                  post={post}
+                  expanded={expandedPostId === post.id}
+                  userReaction={userReactions[post.id] || null}
+                  onExpand={(id) => setExpandedPostId((prev) => (prev === id ? null : id))}
+                  onReact={handleReaction}
+                  onComment={handleCommentPress}
+                  extraActions={post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`
+                    ? (
+                      <View style={styles.floatingButtons}>
+                        <IconButton
+                          icon="pencil"
+                          size={20}
+                          onPress={() => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
+                          style={[styles.floatingBtn, styles.editIcon]}
+                          iconColor="white" />
+                        <IconButton
+                          icon="delete"
+                          size={20}
+                          onPress={() => handleEliminar(post.id)}
+                          style={[styles.floatingBtn, styles.deleteIcon]}
+                          iconColor="white" />
+                      </View>
+                    )
+                    : null}
+                  isSaved={savedPosts.includes(post.id)}
+                  onToggleSave={toggleGuardar} onViewMore={function (): void {
+                    throw new Error("Function not implemented.");
+                  } } comentarioCount={0}                        />
+                      </View>
+                    ))}
+        </ScrollView>
+        
         ) : activeSection === "comentarios" ? (
             userComments.length === 0 ? (
               <Text style={styles.emptyText}>No has hecho ningún comentario aún.</Text>
@@ -423,32 +506,29 @@ const confirmDeletePost = async () => {
                   }
                   onReact={handleReaction}
                   onComment={handleCommentPress}
+                  extraActions={post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`
+                    ? (
+                      <View style={styles.floatingButtons}>
+                        <IconButton
+                          icon="pencil"
+                          size={20}
+                          onPress={() => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
+                          style={[styles.floatingBtn, styles.editIcon]}
+                          iconColor="white" />
+                        <IconButton
+                          icon="delete"
+                          size={20}
+                          onPress={() => handleEliminar(post.id)}
+                          style={[styles.floatingBtn, styles.deleteIcon]}
+                          iconColor="white" />
+                      </View>
+                    )
+                    : null}
                   onViewMore={() => {}}
                   comentarioCount={conteoComentarios[post.id] || 0}
+                  isSaved={savedPosts.includes(post.id)}
+                  onToggleSave={toggleGuardar}
                 />
-
-                {/* Botones editar/eliminar solo si es del usuario */}
-                {post.author ===
-                  `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}` && (
-                  <>
-                   <View style={styles.floatingButtons}>
-                           <IconButton
-                             icon="pencil"
-                             size={20}
-                             onPress={() => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
-                             style={[styles.floatingBtn, styles.editIcon]}
-                             iconColor="white"
-                           />
-                           <IconButton
-                             icon="delete"
-                             size={20}
-                             onPress={() => handleEliminar(post.id)}
-                             style={[styles.floatingBtn, styles.deleteIcon]}
-                             iconColor="white"
-                           />
-                         </View>
-                  </>
-                )}
               </View>
             ))}
           </ScrollView>

@@ -7,6 +7,7 @@ export interface Comment {
 }
 
 export interface BlogPost {
+  guardada: any;
   id: string;
   title: string;
   content: string;

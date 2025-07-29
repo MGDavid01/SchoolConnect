@@ -14,6 +14,7 @@ import calendarioEscolarRoutes from "./routes/calendario-escolar.routes";
 import iotNotificationsRoutes from "./routes/iot-notifications.routes";
 import comentarioRoutes from "./routes/comentario.routes";
 import userRoutes from "./routes/user.routes";
+import guardadoRoutes from "./routes/save.route";
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ app.use("/", calendarioEscolarRoutes); // GET /api/calendario
 app.use("/api/iot-notifications", iotNotificationsRoutes); // IoT notifications routes
 app.use("/api/comentarios", comentarioRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/guardados", guardadoRoutes);
 
 app.get("/", (req, res) => {
   res.send("API funcionando ✅");
