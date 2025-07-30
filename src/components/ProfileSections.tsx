@@ -151,7 +151,7 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({
     }, [activeSection])
   );
 
-  const toggleGuardar = async (postId: string, yaGuardada: boolean) => {
+   const toggleGuardar = async (postId: string, yaGuardada: boolean) => {
   try {
     if (yaGuardada) {
       await axios.delete(`${API_URL}/api/guardados`, {
@@ -361,6 +361,8 @@ const confirmDeletePost = async () => {
   );
 };
 
+  const [savedPostsData, setSavedPostsData] = useState<BlogPost[]>([]);
+
 useEffect(() => {
   const fetchSavedPosts = async () => {
     try {
@@ -438,8 +440,8 @@ useEffect(() => {
       {/* Contenido */}
       <View style={styles.sectionContent}>
         {activeSection === "guardados" ? (
-         <ScrollView>
-          {posts
+  <ScrollView>
+    {posts
             .filter((post) => savedPosts.includes(post.id)) // Solo publicaciones guardadas
             .map((post) => (
               <View key={post.id} style={{ marginBottom: 20 }}>
@@ -471,12 +473,13 @@ useEffect(() => {
                   isSaved={savedPosts.includes(post.id)}
                   onToggleSave={toggleGuardar} onViewMore={function (): void {
                     throw new Error("Function not implemented.");
-                  } } comentarioCount={0}                        />
+                  } } comentarioCount={conteoComentarios[post.id] || 0}                    
+                   />
                       </View>
                     ))}
-        </ScrollView>
-        
-        ) : activeSection === "comentarios" ? (
+     
+  </ScrollView>
+) : activeSection === "comentarios" ? (
             userComments.length === 0 ? (
               <Text style={styles.emptyText}>No has hecho ningún comentario aún.</Text>
             ) : (

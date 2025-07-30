@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  Easing 
+  Easing, 
+  ActivityIndicator
 } from "react-native";
 import {
   Card,
@@ -32,13 +33,16 @@ import { useEffect } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { eventBus } from "../utils/eventBus";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth, UserType } from "../contexts/AuthContext";
 interface BlogScreenProps {
   navigation: NavigationProp<any>;
 }
 
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
+import debounce from 'lodash.debounce';
+import { IUser } from "../models/User";
+
 
 const BlogScreen = ({ navigation }: BlogScreenProps) => {
   const { user } = useAuth();
@@ -132,23 +136,32 @@ useFocusEffect(
   }, [filtroVisibilidad, filtroTipo, user?.grupoID])
 );
 
+const fetchSaved = async () => {
+  if (!user?._id) return;
+  try {
+    const res = await axios.get(`${API_URL}/api/guardados/${user._id}`);
+    const savedIDs = res.data.map((p: any) => p._id || p.id);
+    setSavedPosts(savedIDs);
+  } catch (error) {
+    console.error("Error al cargar guardados:", error);
+  }
+};
+
 useEffect(() => {
-  const fetchSaved = async () => {
-    if (!user?._id) return;
-    try {
-      const res = await axios.get(`${API_URL}/api/guardados/${user._id}`);
-      const savedIDs = res.data.map((p: any) => p._id || p.id);
-      setSavedPosts(savedIDs);
-    } catch (error) {
-      console.error("Error al cargar guardados:", error);
-    }
-  };
   fetchSaved();
 }, [user?._id]);
 
+// También recargar cada vez que la pantalla se enfoque
+useFocusEffect(
+  useCallback(() => {
+    fetchPosts();
+    fetchSaved(); // <-- ahora también aquí
+  }, [filtroVisibilidad, filtroTipo, user?.grupoID])
+);
+
   
 
-  const [searchQuery, setSearchQuery] = useState("");
+
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [newComment, setNewComment] = useState("");
@@ -157,33 +170,39 @@ useEffect(() => {
   const [savedPosts, setSavedPosts] = useState<string[]>([]);
 
 
-const toggleGuardar = async (postId: string, yaGuardada: boolean) => {
-  try {
-    if (yaGuardada) {
-      await axios.delete(`${API_URL}/api/guardados`, {
-        data: { usuarioID: user?._id, publicacionID: postId },
-      });
-      setSavedPosts((prev) => prev.filter((id) => id !== postId));
-      setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, guardada: false } : p))
-      );
-    } else {
-      await axios.post(`${API_URL}/api/guardados`, {
-        usuarioID: user?._id,
-        publicacionID: postId,
-      });
-      setSavedPosts((prev) => [...prev, postId]);
-      setPosts((prev) =>
-        prev.map((p) => (p.id === postId ? { ...p, guardada: true } : p))
-      );
-    }
-  } catch (error) {
-    console.error("Error al guardar/quitar publicación:", error);
-  }
-};
+
+  //Cosas para el buscador, 
+  const [searchQuery, setSearchQuery] = useState('');
+ 
+  const [isSearching, setIsSearching] = useState(false);
+
+
+  const [validSearch, setValidSearch] = useState(true);
+
 
 
  
+
+  //Función para guardar publicaciones
+  const toggleGuardar = async (postId: string, yaGuardada: boolean) => {
+    try {
+      if (yaGuardada) {
+        await axios.delete(`${API_URL}/api/guardados`, {
+          data: { usuarioID: user?._id, publicacionID: postId },
+        });
+        setSavedPosts((prev) => prev.filter((id) => id !== postId));
+      } else {
+        await axios.post(`${API_URL}/api/guardados`, {
+          usuarioID: user?._id,
+          publicacionID: postId,
+        });
+        setSavedPosts((prev) => [...prev, postId]);
+      }
+    } catch (error) {
+      console.error("Error al guardar/quitar publicación:", error);
+    }
+  };
+
 
   const inputRef = useRef<TextInput>(null);
 
@@ -400,12 +419,22 @@ const handleAddComment = async () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Buscar publicaciones..."
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          style={styles.searchbar}
-        />
+      <Searchbar
+        placeholder="Buscar..."
+        onChangeText={setSearchQuery}
+        value={searchQuery}
+        style={styles.searchbar}
+      />
+
+      {!validSearch && (
+        <Text style={{ color: "red", marginTop: 4 }}>
+          Solo se permiten letras, números y acentos.
+        </Text>
+      )}
+
+      {isSearching && <ActivityIndicator size="small" color="#000" />}
+
+     
       </View>
       <View style={styles.filtrosContainer}>
       {/* Filtro visibilidad */}
@@ -913,6 +942,38 @@ floatingButtons: {
     fontSize: 14,
   },
 
+  //para mostrar la informacion por medio del buscador
+  resultItem: {
+  flexDirection: "row", // Para mostrar la foto y nombre en una fila
+  alignItems: "center",
+  backgroundColor: "#fff",
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+  marginVertical: 4,
+  marginHorizontal: 10,
+  borderRadius: 10,
+  shadowColor: "#000",
+  shadowOpacity: 0.1,
+  shadowOffset: { width: 0, height: 2 },
+  shadowRadius: 4,
+  elevation: 2, // sombra en Android
+},
+noResultsText: {
+  textAlign: 'center',
+  marginTop: 16,
+  fontSize: 16,
+  color: 'gray',
+},
+sectionTitle: {
+  fontWeight: 'bold',
+  fontSize: 18,
+  marginTop: 20,
+  marginBottom: 10,
+  marginLeft: 10,
+},
+
+
 });
 
 export default BlogScreen;
+
