@@ -113,6 +113,7 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
         dislikes: conteos[item._id]?.dislike || 0,
         comments: [],
         type: "blog",
+        guardada: savedPosts.includes(item._id),
       }));
 
       setPosts(parsedPosts);
@@ -136,17 +137,73 @@ useFocusEffect(
   }, [filtroVisibilidad, filtroTipo, user?.grupoID])
 );
 
+const fetchSaved = async () => {
+  if (!user?._id) return;
+  try {
+    const res = await axios.get(`${API_URL}/api/guardados/${user._id}`);
+    const savedIDs = res.data.map((p: any) => p._id || p.id);
+    setSavedPosts(savedIDs);
+  } catch (error) {
+    console.error("Error al cargar guardados:", error);
+  }
+};
+
+useEffect(() => {
+  fetchSaved();
+}, [user?._id]);
+
+// También recargar cada vez que la pantalla se enfoque
+useFocusEffect(
+  useCallback(() => {
+    fetchPosts();
+    fetchSaved(); // <-- ahora también aquí
+  }, [filtroVisibilidad, filtroTipo, user?.grupoID])
+);
 
   
 
-  const [searchQuery, setSearchQuery] = useState("");
+
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [newComment, setNewComment] = useState("");
   const [userReactions, setUserReactions] = useState<Record<string, "like" | "dislike" | null>>({});
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
+  const [savedPosts, setSavedPosts] = useState<string[]>([]);
+
+
+
+  //Cosas para el buscador, 
+  const [searchQuery, setSearchQuery] = useState('');
+ 
+  const [isSearching, setIsSearching] = useState(false);
+
+
+  const [validSearch, setValidSearch] = useState(true);
+
+
 
  
+
+  //Función para guardar publicaciones
+  const toggleGuardar = async (postId: string, yaGuardada: boolean) => {
+    try {
+      if (yaGuardada) {
+        await axios.delete(`${API_URL}/api/guardados`, {
+          data: { usuarioID: user?._id, publicacionID: postId },
+        });
+        setSavedPosts((prev) => prev.filter((id) => id !== postId));
+      } else {
+        await axios.post(`${API_URL}/api/guardados`, {
+          usuarioID: user?._id,
+          publicacionID: postId,
+        });
+        setSavedPosts((prev) => [...prev, postId]);
+      }
+    } catch (error) {
+      console.error("Error al guardar/quitar publicación:", error);
+    }
+  };
+
 
   const inputRef = useRef<TextInput>(null);
 
@@ -479,6 +536,7 @@ const handleAddComment = async () => {
                 selectedPost.comments.map((comment) => (
                   <View key={comment.id} style={styles.commentItem}>
                     <Text style={styles.commentAuthor}>{comment.author}</Text>
+                    
                     <Text style={styles.commentText}>{comment.content}</Text>
                     <View style={styles.commentMeta}>
                       <Text style={styles.commentDate}>{comment.date}</Text>
@@ -947,7 +1005,7 @@ modalButton: {
   flex: 1,
   paddingVertical: 12,
   marginHorizontal: 8,
-  borderRadius: 30, // más redondeado
+  borderRadius: 30, 
   alignItems: "center",
   shadowColor: "#000",
   shadowOffset: { width: 0, height: 2 },
@@ -996,3 +1054,4 @@ modalButtonText: {
 });
 
 export default BlogScreen;
+

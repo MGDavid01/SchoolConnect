@@ -17,7 +17,7 @@ const usuarioSchema = new Schema<IUser>({
   _id: {
     type: String,
     required: true,
-    lowercase: true, // para evitar mayúsculas en correos
+    lowercase: true, 
     trim: true,
   },
   nombre: {
@@ -43,7 +43,7 @@ const usuarioSchema = new Schema<IUser>({
   },
   password: {
     type: String,
-    required: true, // excluye la contraseña por defecto al hacer queries
+    required: true, 
   },
   activo: {
     type: Boolean,

@@ -225,6 +225,18 @@ const BlogCard = ({
               resizeMode="contain"
             />
           </TouchableOpacity>
+          {onToggleSave && (
+            <TouchableOpacity
+              style={styles.reactionBtn}
+              onPress={() => onToggleSave(post.id, isSaved || false)}
+            >
+              <IconButton
+                icon={isSaved ? "bookmark" : "bookmark-outline"}
+                size={22}
+                iconColor={isSaved ? COLORS.primary : COLORS.textSecondary}
+              />
+            </TouchableOpacity>
+          )}
         </View>
       </Modal>
     </Card>
@@ -241,6 +253,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
     overflow: "hidden",
+    maxWidth: 500,           
+    alignSelf: "center",    
+    width: "100%",
+    position: "relative", 
   },
   header: {
     flexDirection: "row",
