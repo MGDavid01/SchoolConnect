@@ -2,6 +2,7 @@
 import { Router } from "express";
 import { IoTNotificationModel } from "../models/IoTNotification";
 import { UserModel } from "../models/User";
+import { io } from "../server";
 
 const router: Router = Router();
 
@@ -160,7 +161,6 @@ router.post("/create", async (req, res) => {
 
     // Crear la notificación
     const newNotification = new IoTNotificationModel({
-      _id: new Date().getTime().toString(), // ID único basado en timestamp
       grupoID,
       estudianteID: estudianteID.toLowerCase(),
       tutorID: tutorID.toLowerCase(),
@@ -172,8 +172,17 @@ router.post("/create", async (req, res) => {
 
     await newNotification.save();
 
-    // Aquí podrías integrar con un servicio de notificaciones push
-    // como Firebase Cloud Messaging o Expo Notifications
+    // Emitir evento a través de Socket.io
+    io.to(`student-${estudianteID.toLowerCase()}`).emit("new-iot-notification", {
+      notification: newNotification,
+      message: "Nueva notificación IoT recibida"
+    });
+
+    // También emitir al grupo si es necesario
+    io.to(`group-${grupoID}`).emit("new-iot-notification", {
+      notification: newNotification,
+      message: "Nueva notificación IoT en el grupo"
+    });
 
     res.status(201).json({
       success: true,

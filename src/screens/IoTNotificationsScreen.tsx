@@ -1,19 +1,21 @@
 // src/screens/IoTNotificationsScreen.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  RefreshControl,
-  ActivityIndicator,
-  Alert,
   TouchableOpacity,
+  Alert,
+  RefreshControl,
+  Clipboard,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView, Edge } from 'react-native-safe-area-context';
+import { useIoTNotifications } from '../hooks/useIoTNotifications';
+import { usePendingNotifications } from '../hooks/usePendingNotifications';
 import { useAuth } from '../contexts/AuthContext';
-import IoTNotificationCard from '../components/IoTNotificationCard';
-import { API_URL } from '../constants/api';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '../theme/theme';
 
 interface IoTNotification {
   _id: string;
@@ -26,344 +28,437 @@ interface IoTNotification {
   mensaje?: string;
 }
 
-interface NotificationStats {
-  total: number;
-  leidas: number;
-  respondidas: number;
-  noLeidas: number;
-}
+// Función para formatear fechas
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  
+  // Formato de fecha: "1 de julio, 2025"
+  const options: Intl.DateTimeFormatOptions = {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  };
+  const fecha = date.toLocaleDateString('es-ES', options);
+  
+  // Formato de hora: "2:30 PM"
+  const hora = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+  
+  return { fecha, hora };
+};
 
 const IoTNotificationsScreen: React.FC = () => {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<IoTNotification[]>([]);
-  const [stats, setStats] = useState<NotificationStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    notifications,
+    loading,
+    error,
+    loadNotifications,
+    markAsRead,
+    respondToNotification,
+  } = useIoTNotifications();
+
+  const { pendingCount } = usePendingNotifications();
+
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
-  const fetchNotifications = useCallback(async () => {
+  const onRefresh = async () => {
+    setRefreshing(true);
     try {
-      if (!user?._id) return;
-
-      const response = await fetch(
-        `${API_URL}/iot-notifications/student/${user._id}?unreadOnly=${filter === 'unread'}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data.data || []);
-      } else {
-        console.error('Error fetching notifications:', response.status);
-      }
+      await loadNotifications('all', false);
     } catch (error) {
-      console.error('Error fetching notifications:', error);
-      Alert.alert('Error', 'No se pudieron cargar las notificaciones');
+      console.log('Error al refrescar:', error);
     }
-  }, [user?._id, filter]);
+    setRefreshing(false);
+  };
 
-  const fetchStats = useCallback(async () => {
+  const handleMarkAsRead = async (notificationId: string) => {
     try {
-      if (!user?._id) return;
-
-      const response = await fetch(
-        `${API_URL}/iot-notifications/stats/${user._id}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.data);
-      }
+      await markAsRead(notificationId);
+      Alert.alert('Éxito', 'Notificación marcada como leída');
     } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  }, [user?._id]);
-
-  const markAsRead = async (notificationId: string) => {
-    try {
-      const response = await fetch(
-        `${API_URL}/iot-notifications/${notificationId}/read`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        // Actualizar el estado local
-        setNotifications(prev =>
-          prev.map(notif =>
-            notif._id === notificationId
-              ? { ...notif, leido: true }
-              : notif
-          )
-        );
-        
-        // Actualizar estadísticas
-        fetchStats();
-      }
-    } catch (error) {
-      console.error('Error marking as read:', error);
+      console.log('Error marcando como leída:', error);
+      Alert.alert('Error', 'No se pudo marcar como leída');
     }
   };
 
-  const respondToNotification = async (notificationId: string) => {
+  const handleRespond = async (notificationId: string, tutorEmail: string) => {
     try {
-      const response = await fetch(
-        `${API_URL}/iot-notifications/${notificationId}/respond`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (response.ok) {
-        // Actualizar el estado local
-        setNotifications(prev =>
-          prev.map(notif =>
-            notif._id === notificationId
-              ? { ...notif, respondido: true, leido: true }
-              : notif
-          )
-        );
+      // Primero marcar como respondida en la base de datos
+      const success = await respondToNotification(notificationId);
+      
+      if (success) {
+        // Copiar el correo del tutor al portapapeles
+        await Clipboard.setString(tutorEmail);
         
         Alert.alert(
-          'Éxito',
-          'Has respondido a la llamada de tu tutor',
-          [{ text: 'OK' }]
+          'Correo copiado', 
+          `El correo del tutor (${tutorEmail}) ha sido copiado al portapapeles`
         );
-        
-        // Actualizar estadísticas
-        fetchStats();
+      } else {
+        Alert.alert('Error', 'No se pudo responder a la llamada');
       }
     } catch (error) {
-      console.error('Error responding to notification:', error);
-      Alert.alert('Error', 'No se pudo responder a la notificación');
+      console.log('Error copiando correo:', error);
+      Alert.alert('Error', 'No se pudo copiar el correo al portapapeles');
     }
   };
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([fetchNotifications(), fetchStats()]);
-    setRefreshing(false);
-  }, [fetchNotifications, fetchStats]);
-
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await Promise.all([fetchNotifications(), fetchStats()]);
-      setLoading(false);
-    };
-
-    loadData();
-  }, [fetchNotifications, fetchStats]);
-
-  const renderNotification = ({ item }: { item: IoTNotification }) => (
-    <IoTNotificationCard
-      notification={item}
-      onMarkAsRead={markAsRead}
-      onRespond={respondToNotification}
-      currentUserId={user?._id || ''}
-    />
-  );
-
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <Text style={styles.title}>Notificaciones IoT</Text>
-      
-      {stats && (
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Total</Text>
+  const renderNotification = ({ item }: { item: IoTNotification }) => {
+    const { fecha, hora } = formatDate(item.fechaHora);
+    
+    return (
+      <View style={[
+        styles.notificationItem, 
+        !item.leido && styles.unreadItem,
+        item.respondido && styles.respondedItem
+      ]}>
+        <View style={styles.notificationInfo}>
+          <View style={styles.notificationTop}>
+            <Text style={styles.tutorText}>
+              {item.tutorID}
+            </Text>
+            <View style={styles.statusContainer}>
+              {!item.leido && (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>Nuevo</Text>
+                </View>
+              )}
+              {item.respondido && (
+                <View style={styles.respondedBadge}>
+                  <Text style={styles.respondedBadgeText}>Respondido</Text>
+                </View>
+              )}
+            </View>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{stats.noLeidas}</Text>
-            <Text style={styles.statLabel}>Sin leer</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{stats.respondidas}</Text>
-            <Text style={styles.statLabel}>Respondidas</Text>
+          <Text style={styles.messageText}>{item.mensaje}</Text>
+          <View style={styles.timeContainer}>
+            <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} />
+            <Text style={styles.timeText}>{fecha} • {hora}</Text>
           </View>
         </View>
-      )}
 
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[styles.filterButton, filter === 'all' && styles.filterActive]}
-          onPress={() => setFilter('all')}
-        >
-          <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
-            Todas
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.filterButton, filter === 'unread' && styles.filterActive]}
-          onPress={() => setFilter('unread')}
-        >
-          <Text style={[styles.filterText, filter === 'unread' && styles.filterTextActive]}>
-            Sin leer
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="notifications-off" size={64} color="#CCCCCC" />
-      <Text style={styles.emptyTitle}>No hay notificaciones</Text>
-      <Text style={styles.emptySubtitle}>
-        {filter === 'unread' 
-          ? 'No tienes notificaciones sin leer'
-          : 'No has recibido llamadas de tutores aún'
-        }
-      </Text>
-    </View>
-  );
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF6B35" />
-        <Text style={styles.loadingText}>Cargando notificaciones...</Text>
+        <View style={styles.actionButtons}>
+          {!item.leido && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => handleMarkAsRead(item._id)}
+            >
+              <Ionicons name="checkmark-outline" size={16} color={COLORS.primary} />
+              <Text style={styles.actionButtonText}>Leída</Text>
+            </TouchableOpacity>
+          )}
+          
+          {!item.respondido && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.respondButton]}
+              onPress={() => handleRespond(item._id, item.tutorID)}
+            >
+              <Ionicons name="copy-outline" size={16} color="#FFF" />
+              <Text style={styles.respondButtonText}>Copiar</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     );
-  }
+  };
 
-  return (
-    <View style={styles.container}>
-      <FlatList
-        data={notifications}
-        renderItem={renderNotification}
-        keyExtractor={(item) => item._id}
-        ListHeaderComponent={renderHeader}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContainer}
-      />
-    </View>
+    return (
+    <SafeAreaView style={styles.container} edges={['top'] as Edge[]}>
+      <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Ionicons name="notifications" size={28} color={COLORS.primary} />
+            <Text style={styles.title}>Notificaciones</Text>
+          </View>
+          <View style={styles.headerSubtitle}>
+            <Text style={styles.subtitleText}>
+              {pendingCount} pendiente{pendingCount !== 1 ? 's' : ''}
+            </Text>
+          </View>
+        </View>
+
+        {error && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={24} color={COLORS.error} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
+              <Ionicons name="refresh" size={16} color="#FFF" />
+              <Text style={styles.retryButtonText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {loading && !refreshing && (
+          <View style={styles.loadingContainer}>
+            <Ionicons name="hourglass-outline" size={32} color={COLORS.primary} />
+            <Text style={styles.loadingText}>Cargando notificaciones...</Text>
+          </View>
+        )}
+
+        <FlatList
+          data={notifications}
+          renderItem={renderNotification}
+          keyExtractor={(item) => item._id}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              colors={[COLORS.primary]}
+              tintColor={COLORS.primary}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="notifications-off" size={80} color={COLORS.textSecondary} />
+              </View>
+              <Text style={styles.emptyText}>No hay notificaciones</Text>
+              <Text style={styles.emptySubtext}>
+                Las notificaciones aparecerán aquí cuando tu tutor te llame
+              </Text>
+            </View>
+          }
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+        />
+      </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666666',
-  },
-  listContainer: {
-    paddingBottom: 20,
+    backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
+    backgroundColor: COLORS.primary,
+    paddingTop: 30,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 8,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 16,
+    color: COLORS.surface,
+    marginLeft: 12,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 16,
-    paddingVertical: 12,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
+  headerSubtitle: {
+    marginLeft: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
   },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FF6B35',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666666',
-    marginTop: 4,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F0F0F0',
-    borderRadius: 8,
-    padding: 4,
-  },
-  filterButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  filterActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  filterText: {
+  subtitleText: {
     fontSize: 14,
-    color: '#666666',
+    color: COLORS.surface,
+    fontStyle: 'italic',
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(211, 47, 47, 0.1)',
+    padding: 20,
+    margin: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.error,
+  },
+  errorText: {
+    color: COLORS.error,
+    textAlign: 'center',
+    marginVertical: 12,
+    fontSize: 16,
     fontWeight: '500',
   },
-  filterTextActive: {
-    color: '#FF6B35',
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  retryButton: {
+    backgroundColor: COLORS.error,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 60,
+    shadowColor: COLORS.error,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#666666',
-    marginTop: 16,
+  retryButtonText: {
+    color: COLORS.surface,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    marginTop: 12,
+    fontWeight: '500',
+  },
+  listContainer: {
+    padding: 16,
+  },
+  notificationItem: {
+    backgroundColor: COLORS.surface,
+    padding: 20,
+    marginBottom: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  unreadItem: {
+    borderLeftWidth: 6,
+    borderLeftColor: COLORS.primary,
+    backgroundColor: 'rgba(122, 21, 37, 0.05)',
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.1,
+  },
+  respondedItem: {
+    borderLeftWidth: 6,
+    borderLeftColor: COLORS.secondary,
+    backgroundColor: 'rgba(183, 142, 74, 0.05)',
+  },
+  notificationInfo: {
+    flex: 1,
+  },
+  notificationTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 8,
   },
-  emptySubtitle: {
+  tutorText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    flex: 1,
+    textTransform: 'capitalize',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  unreadBadge: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  unreadBadgeText: {
+    color: COLORS.surface,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  respondedBadge: {
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  respondedBadgeText: {
+    color: COLORS.surface,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  messageText: {
+    fontSize: 16,
+    color: COLORS.text,
+    marginBottom: 12,
+    lineHeight: 22,
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(183, 142, 74, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  timeText: {
+    fontSize: 13,
+    color: COLORS.secondary,
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 16,
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(122, 21, 37, 0.1)',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    minWidth: 80,
+  },
+  actionButtonText: {
     fontSize: 14,
-    color: '#999999',
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  respondButton: {
+    backgroundColor: COLORS.secondary,
+    borderColor: COLORS.secondary,
+  },
+  respondButtonText: {
+    fontSize: 14,
+    color: COLORS.surface,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    padding: 60,
+  },
+  emptyIconContainer: {
+    marginBottom: 24,
+    backgroundColor: 'rgba(122, 21, 37, 0.1)',
+    padding: 20,
+    borderRadius: 50,
+  },
+  emptyText: {
+    fontSize: 20,
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  emptySubtext: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: 32,
+    lineHeight: 24,
   },
 });
 

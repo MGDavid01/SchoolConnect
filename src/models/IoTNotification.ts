@@ -2,7 +2,6 @@
 import { Schema, model, Document } from "mongoose";
 
 export interface IIoTNotification extends Document {
-  _id: string;
   grupoID: string;
   estudianteID: string;
   tutorID: string;
@@ -13,10 +12,6 @@ export interface IIoTNotification extends Document {
 }
 
 const iotNotificationSchema = new Schema<IIoTNotification>({
-  _id: {
-    type: String,
-    required: true,
-  },
   grupoID: {
     type: String,
     required: true,

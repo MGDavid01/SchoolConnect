@@ -1,6 +1,6 @@
-import React from "react";
-import { View, TouchableOpacity, StyleSheet, Image } from "react-native";
-import { Card, Text, IconButton, Avatar } from "react-native-paper";
+import React, { useState } from "react";
+import { View, TouchableOpacity, StyleSheet, Image, Modal } from "react-native";
+import { Card, Text, IconButton, Avatar, Menu, Divider } from "react-native-paper";
 import { COLORS } from "../theme/theme";
 import { BlogPost } from "../types/blog";
 
@@ -13,6 +13,9 @@ interface BlogCardProps {
   onComment: (post: BlogPost) => void;
   onViewMore: () => void;
   comentarioCount: number;
+  onEdit?: (post: BlogPost) => void;
+  onDelete?: (postId: string) => void;
+  isOwner?: boolean;
 }
 
 const BlogCard = ({
@@ -23,148 +26,384 @@ const BlogCard = ({
   onReact,
   onComment,
   comentarioCount,
+  onEdit,
+  onDelete,
+  isOwner = false,
 }: BlogCardProps) => {
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
   const avatarLetter = post.author?.charAt(0).toUpperCase() || "?";
 
+  const openMenu = () => setMenuVisible(true);
+  const closeMenu = () => setMenuVisible(false);
+
+  const handleEdit = () => {
+    closeMenu();
+    onEdit?.(post);
+  };
+
+  const handleDelete = () => {
+    closeMenu();
+    onDelete?.(post.id);
+  };
+
+  const openImageModal = () => {
+    setImageModalVisible(true);
+  };
+
+  const closeImageModal = () => {
+    setImageModalVisible(false);
+  };
+
   return (
-    <Card style={styles.card}>
-      {/* Header con autor y fecha */}
+    <Card style={styles.card} elevation={4}>
+      {/* Header con autor, fecha y menú */}
       <View style={styles.header}>
-        <Avatar.Text
-          size={36}
-          label={avatarLetter}
-          style={styles.avatar}
-          color="white"
-        />
-        <View style={{ flex: 1, marginLeft: 10 }}>
-          <Text style={styles.author}>{post.author}</Text>
-          <Text style={styles.date}>{post.date}</Text>
+        <View style={styles.authorInfo}>
+          <Avatar.Text
+            size={40}
+            label={avatarLetter}
+            style={styles.avatar}
+            color="white"
+          />
+          <View style={styles.authorDetails}>
+            <Text style={styles.author}>{post.author}</Text>
+            <Text style={styles.date}>{post.date}</Text>
+            <View style={styles.categoryContainer}>
+              <Text style={styles.category}>
+                {post.visibilidad === "todos" ? "Público" : "Grupo"} • {post.tipo}
+              </Text>
+            </View>
+          </View>
         </View>
+        
+        {isOwner && (
+          <Menu
+            visible={menuVisible}
+            onDismiss={closeMenu}
+            anchor={
+              <IconButton
+                icon="dots-horizontal"
+                size={24}
+                onPress={openMenu}
+                iconColor={COLORS.textSecondary}
+                style={styles.menuButton}
+              />
+            }
+          >
+            <Menu.Item
+              onPress={handleEdit}
+              title="Editar"
+              leadingIcon="pencil"
+              titleStyle={styles.menuItemText}
+            />
+            <Divider />
+            <Menu.Item
+              onPress={handleDelete}
+              title="Eliminar"
+              leadingIcon="delete"
+              titleStyle={[styles.menuItemText, styles.deleteMenuItem]}
+            />
+          </Menu>
+        )}
       </View>
 
-      {/* Imagen */}
-      {post.imageUrl && (
-        <Image source={{ uri: post.imageUrl }} style={styles.image} />
-      )}
-
       {/* Contenido */}
-      <Card.Content>
-        <Text style={styles.title}>{post.title}</Text>
-        <Text style={styles.content} numberOfLines={expanded ? undefined : 3}>
+      <Card.Content style={styles.content}>
+
+        <Text style={styles.contentText} numberOfLines={expanded ? undefined : 4}>
           {post.content}
         </Text>
 
-        {/* Botón Ver más */}
-        <TouchableOpacity onPress={() => onExpand(post.id)} style={styles.expandBtn}>
-          <Text style={styles.expandText}>{expanded ? "Ver menos" : "Ver más"}</Text>
-        </TouchableOpacity>
+        {/* Botón Ver más - se muestra si el texto tiene más de 4 líneas */}
+        {post.content.split('\n').length > 4 || post.content.length > 300 && (
+          <TouchableOpacity onPress={() => onExpand(post.id)} style={styles.expandBtn}>
+            <Text style={styles.expandText}>
+              {expanded ? "Ver menos" : "Ver más"}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </Card.Content>
 
-        {/* Acciones */}
+      {/* Imagen */}
+      {post.imageUrl && (
+        <View style={styles.imageContainer}>
+          <TouchableOpacity 
+            onPress={openImageModal} 
+            style={styles.imageTouchable}
+            activeOpacity={0.8}
+          >
+            <Image source={{ uri: post.imageUrl }} style={styles.image} />
+            <View style={styles.imageOverlay}>
+              <IconButton
+                icon="magnify"
+                size={24}
+                iconColor={COLORS.surface}
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Botones de interacción */}
+      <View style={styles.actionsContainer}>
         <View style={styles.actionsRow}>
           <TouchableOpacity
-            style={styles.reactionBtn}
+            style={styles.actionButton}
             onPress={() => onReact(post.id, "like")}
           >
             <IconButton
               icon={userReaction === "like" ? "heart" : "heart-outline"}
-              size={22}
+              size={20}
               iconColor={userReaction === "like" ? COLORS.primary : COLORS.textSecondary}
             />
-            <Text style={styles.reactionCount}>{post.likes}</Text>
+            <Text style={[
+              styles.actionCount,
+              userReaction === "like" && styles.activeActionCount
+            ]}>
+              {post.likes}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.reactionBtn}
+            style={styles.actionButton}
             onPress={() => onReact(post.id, "dislike")}
           >
             <IconButton
               icon={userReaction === "dislike" ? "thumb-down" : "thumb-down-outline"}
-              size={22}
+              size={20}
               iconColor={userReaction === "dislike" ? COLORS.error : COLORS.textSecondary}
             />
-            <Text style={styles.reactionCount}>{post.dislikes}</Text>
+            <Text style={[
+              styles.actionCount,
+              userReaction === "dislike" && styles.activeActionCount
+            ]}>
+              {post.dislikes}
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.reactionBtn} onPress={() => onComment(post)}>
-            <IconButton icon="comment-outline" size={22} iconColor={COLORS.primary} />
-            <Text style={styles.reactionCount}>{comentarioCount}</Text>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={() => onComment(post)}
+          >
+            <IconButton 
+              icon="comment-outline" 
+              size={20} 
+              iconColor={COLORS.primary} 
+            />
+            <Text style={styles.actionCount}>{comentarioCount}</Text>
           </TouchableOpacity>
         </View>
-      </Card.Content>
+      </View>
+
+      {/* Modal para ver imagen completa */}
+      <Modal
+        visible={imageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeImageModal}
+      >
+        <View style={styles.fullImageModalOverlay}>
+          <TouchableOpacity 
+            style={styles.fullImageModalCloseButton} 
+            onPress={closeImageModal}
+          >
+            <IconButton
+              icon="close"
+              size={28}
+              iconColor={COLORS.surface}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.fullImageContainer} 
+            onPress={closeImageModal}
+            activeOpacity={1}
+          >
+            <Image 
+              source={{ uri: post.imageUrl || '' }} 
+              style={styles.fullImage} 
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </Card>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    marginVertical: 10,
-    marginHorizontal: 16,
-    borderRadius: 16,
     backgroundColor: COLORS.surface,
+    borderRadius: 6,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
     overflow: "hidden",
   },
   header: {
     flexDirection: "row",
-    alignItems: "center",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 6,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  authorInfo: {
+    flexDirection: "row",
+    flex: 1,
   },
   avatar: {
     backgroundColor: COLORS.primary,
   },
+  authorDetails: {
+    marginLeft: 12,
+    flex: 1,
+  },
   author: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "600",
     color: COLORS.text,
+    marginBottom: 2,
   },
   date: {
-    fontSize: 12,
+    fontSize: 13,
     color: COLORS.textSecondary,
+    marginBottom: 4,
   },
-  image: {
-    height: 180,
-    width: "100%",
+  categoryContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  category: {
+    fontSize: 12,
+    color: COLORS.secondary,
+    fontWeight: "500",
+  },
+  menuButton: {
+    margin: 0,
+  },
+  content: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   title: {
     fontSize: 18,
-    fontWeight: "600",
-    color: COLORS.text,
-    marginTop: 10,
+    fontWeight: "700",
+    color: COLORS.primary,
+    marginBottom: 8,
+    lineHeight: 24,
   },
-  content: {
+  contentText: {
     fontSize: 15,
-    color: COLORS.textSecondary,
+    color: COLORS.text,
     lineHeight: 22,
-    marginTop: 4,
+    textAlign: "justify",
   },
   expandBtn: {
-    marginTop: 6,
+    marginTop: 8,
+    alignSelf: "flex-start",
   },
   expandText: {
     color: COLORS.primary,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  imageContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  image: {
+    width: "100%",
+    height: 500,
+    maxHeight: 500,
+    borderRadius: 12,
+    resizeMode: "cover",
+  },
+  imageTouchable: {
+    position: "relative",
+  },
+  imageOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 12,
+    opacity: 1,
+  },
+  imageOverlayText: {
+    color: COLORS.surface,
+    fontSize: 12,
     fontWeight: "500",
+    marginTop: 4,
+  },
+  fullImageModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullImageModalCloseButton: {
+    position: "absolute",
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 20,
+    padding: 8,
+  },
+  fullImageContainer: {
+    flex: 1,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullImage: {
+    width: "100%",
+    height: "100%",
+  },
+  actionsContainer: {
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.08)",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   actionsRow: {
     flexDirection: "row",
+    justifyContent: "space-around",
     alignItems: "center",
-    marginTop: 10,
-    paddingHorizontal: 8,
-    paddingBottom: 10,
   },
-  reactionBtn: {
+  actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    marginRight: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.02)",
   },
-  reactionCount: {
-    fontSize: 13,
+  actionCount: {
+    fontSize: 14,
     color: COLORS.textSecondary,
+    fontWeight: "500",
+    marginLeft: 4,
+  },
+  activeActionCount: {
+    color: COLORS.primary,
+    fontWeight: "600",
+  },
+  menuItemText: {
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  deleteMenuItem: {
+    color: COLORS.error,
   },
 });
 

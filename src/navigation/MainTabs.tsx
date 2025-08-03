@@ -2,6 +2,7 @@ import React, { useContext, useState } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator, NativeStackNavigationOptions } from "@react-navigation/native-stack";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { View, Text, StyleSheet } from "react-native";
 import NewsScreen from "../screens/NewsScreen";
 import NewsDetailScreen from "../screens/NewsDetailScreen";
 import BlogScreen from "../screens/BlogScreen";
@@ -10,12 +11,14 @@ import ScholarshipScreen from "../screens/ScholarshipScreen";
 import ScholarshipDetailScreen from "../screens/ScholarshipDetailScreen";
 import CalendarScreen from "../screens/CalendarScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import IoTNotificationsScreen from "../screens/IoTNotificationsScreen";
 import TabTransition from "../components/TabTransition";
 import { COLORS } from "../theme/theme";
 import { Scholarship } from '../navigation/types'; // Asegúrate de que la ruta sea correcta
 import { NewsStackParamList } from './types';
 import { ScholarshipStackParamList } from '../navigation/types';
 import EditPostScreen from "../screens/EditPostScreen";
+import { usePendingNotifications } from "../hooks/usePendingNotifications";
 
 import RoleListScreen from "../screens/RoleListScreen";
 import RolesNavigator from "./RolesNavigator";
@@ -30,6 +33,7 @@ export type RootTabParamList = {
   Blog: undefined;
   Becas: undefined;
   Calendario: undefined;
+  IoT: undefined;
   Perfil: undefined;
   RolesTab: undefined;
 };
@@ -113,12 +117,7 @@ const BlogNavigator: React.FC<NavigatorProps> = ({ active }) => {
           name="CreatePost" 
           component={CreatePostScreen} 
           options={{
-            headerShown: true,
-            headerTitle: "Nueva Publicación",
-            headerStyle: {
-              backgroundColor: COLORS.primary
-            },
-            headerTintColor: COLORS.surface
+            headerShown: false
           }}
         />
         <BlogStack.Screen 
@@ -174,6 +173,14 @@ const CalendarNavigator: React.FC<NavigatorProps> = ({ active }) => {
   );
 };
 
+const IoTNavigator: React.FC<NavigatorProps> = ({ active }) => {
+  return (
+    <TabTransition active={active}>
+      <IoTNotificationsScreen />
+    </TabTransition>
+  );
+};
+
 const ProfileNavigator: React.FC<NavigatorProps> = ({ active }) => {
   return (
     <TabTransition active={active}>
@@ -195,6 +202,31 @@ const ProfileNavigator: React.FC<NavigatorProps> = ({ active }) => {
         />
       </ProfileStack.Navigator>
     </TabTransition>
+  );
+};
+
+// Componente para el badge de notificaciones
+const NotificationBadge: React.FC<{ count: number }> = ({ count }) => {
+  if (count === 0) return null;
+  
+  return (
+    <View style={styles.badge}>
+      <Text style={styles.badgeText}>
+        {count > 99 ? '99+' : count.toString()}
+      </Text>
+    </View>
+  );
+};
+
+// Componente para el icono del tab con badge
+const NotificationTabIcon: React.FC<{ color: string; size: number }> = ({ color, size }) => {
+  const { pendingCount } = usePendingNotifications();
+  
+  return (
+    <View style={styles.iconContainer}>
+      <MaterialCommunityIcons name="bell-ring" size={size} color={color} />
+      <NotificationBadge count={pendingCount} />
+    </View>
   );
 };
 
@@ -280,6 +312,18 @@ const { user } = authContext;
         }}
       />
       <Tab.Screen
+        name="IoT"
+        children={(props) => (
+          <IoTNavigator {...props} active={activeTab === "IoT"} />
+        )}
+        options={{
+          tabBarIcon: ({ color, size }) => (
+            <NotificationTabIcon color={color} size={size} />
+          ),
+          tabBarLabel: "Notificaciones"
+        }}
+      />
+      <Tab.Screen
         name="Perfil"
         children={(props) => (
           <ProfileNavigator {...props} active={activeTab === "Perfil"} />
@@ -294,5 +338,36 @@ const { user } = authContext;
     </Tab.Navigator>
   );
 };
+
+const styles = StyleSheet.create({
+  tabContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  iconContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -8,
+    backgroundColor: '#FF6B6B',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.surface,
+    zIndex: 1,
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+});
 
 export default MainTabs;

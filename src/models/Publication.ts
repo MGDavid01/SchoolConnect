@@ -4,7 +4,7 @@ export interface IPublication extends Document {
   autorID: string;
   contenido: string;
   grupoID?: string;
-  tipo: "normal" | "ayuda" | "pregunta" | "aviso";
+  tipo: "General" | "Ayuda" | "Pregunta" | "Aviso";
   fecha: Date;
   visibilidad: "grupo" | "todos";
   imagenURL?: string;
@@ -27,7 +27,7 @@ const publicationSchema = new Schema<IPublication>({
   },
   tipo: {
     type: String,
-    enum: ["normal", "ayuda", "pregunta", "aviso"],
+    enum: ["General", "Ayuda", "Pregunta", "Aviso"],
     required: true,
   },
   fecha: {

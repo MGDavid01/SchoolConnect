@@ -18,4 +18,6 @@ export interface BlogPost {
   dislikes: number;
   comments: Comment[];
   type: string;
+  visibilidad?: string;
+  tipo?: string;
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,40 +8,53 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  StyleSheet
+  StyleSheet,
+  Alert,
+  SafeAreaView,
+  StatusBar,
+  Modal,
+  TouchableWithoutFeedback,
 } from "react-native";
+import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from "@react-navigation/native";
-import { Button, Card, Chip, Menu } from "react-native-paper";
-import { useAuth } from "../contexts/AuthContext"; // Asegúrate de que esta ruta sea correcta
+import { Button, Card, Chip, Menu, IconButton, Avatar } from "react-native-paper";
+import { useAuth } from "../contexts/AuthContext";
 import { COLORS } from "../theme/theme";
 import axios from "axios";
 import { API_URL } from "../constants/api";
 import { Snackbar } from "react-native-paper";
-
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const CreatePostScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
 
   const [contenido, setContenido] = useState("");
-  const [tipo, setTipo] = useState<"normal" | "ayuda" | "pregunta" | "aviso">("normal");
+  const [tipo, setTipo] = useState<"General" | "Ayuda" | "Pregunta" | "Aviso">("General");
   const [visibilidad, setVisibilidad] = useState<"todos" | "grupo">("todos");
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [tipoMenuVisible, setTipoMenuVisible] = useState(false);
   const [visibilidadMenuVisible, setVisibilidadMenuVisible] = useState(false);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
 
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarType, setSnackbarType] = useState<"success" | "error">("success");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
+  const avatarLetter = user?.nombre?.charAt(0).toUpperCase() || "U";
 
   const handlePublicar = async () => {
-    if (!contenido.trim()) {
-      setSnackbarMessage("Debes escribir contenido para publicar.");
+    if (!contenido.trim() && !selectedImage) {
+      setSnackbarMessage("Escribe algo o agrega una imagen para publicar");
       setSnackbarType("error");
       setSnackbarVisible(true);
       return;
     }
+
+    setIsPublishing(true);
 
     try {
       const nuevaPublicacion = {
@@ -50,6 +63,7 @@ const CreatePostScreen = () => {
         grupoID: user?.grupoID,
         tipo,
         visibilidad,
+        imagenURL: selectedImage || null,
         fecha: new Date(),
         activo: true,
       };
@@ -57,7 +71,7 @@ const CreatePostScreen = () => {
       const response = await axios.post(`${API_URL}/api/publicaciones`, nuevaPublicacion);
 
       if (response.status === 201) {
-        setSnackbarMessage("Publicación creada con éxito.");
+        setSnackbarMessage("¡Publicación creada exitosamente!");
         setSnackbarType("success");
         setSnackbarVisible(true);
 
@@ -68,112 +82,440 @@ const CreatePostScreen = () => {
       }
     } catch (error) {
       console.error("Error al publicar:", error);
-      setSnackbarMessage("No se pudo publicar. Revisa tu conexión o el servidor.");
+      setSnackbarMessage("No se pudo publicar. Intenta de nuevo.");
+      setSnackbarType("error");
+      setSnackbarVisible(true);
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (contenido.trim() || selectedImage) {
+      Alert.alert(
+        "Descartar publicación",
+        "¿Estás seguro de que quieres descartar esta publicación?",
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Descartar", style: "destructive", onPress: () => navigation.goBack() }
+        ]
+      );
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  const requestPermissions = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permisos requeridos',
+        'Necesitamos acceso a tu galería para seleccionar imágenes.',
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const pickImage = async () => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.9,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setIsUploadingImage(true);
+        
+        try {
+          // Crear FormData para enviar la imagen
+          const formData = new FormData();
+          formData.append('image', {
+            uri: result.assets[0].uri,
+            type: 'image/jpeg',
+            name: 'image.jpg',
+          } as any);
+
+          // Subir imagen a Cloudinary
+          const uploadResponse = await axios.post(`${API_URL}/api/upload/upload-image`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+
+          if (uploadResponse.data.success) {
+            setSelectedImage(uploadResponse.data.imageUrl);
+            setSnackbarMessage("Imagen subida exitosamente");
+            setSnackbarType("success");
+            setSnackbarVisible(true);
+          } else {
+            throw new Error('Error al subir imagen');
+          }
+        } catch (uploadError) {
+          console.error('Error al subir imagen:', uploadError);
+          setSnackbarMessage("Error al subir la imagen. Intenta de nuevo.");
+          setSnackbarType("error");
+          setSnackbarVisible(true);
+        } finally {
+          setIsUploadingImage(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error al seleccionar/subir imagen:', error);
+      setSnackbarMessage("Error al subir la imagen. Intenta de nuevo.");
       setSnackbarType("error");
       setSnackbarVisible(true);
     }
   };
 
+  const removeImage = () => {
+    setSelectedImage(null);
+  };
+
+  const openImageModal = () => {
+    setImageModalVisible(true);
+  };
+
+  const closeImageModal = () => {
+    setImageModalVisible(false);
+  };
+
+  // Manejo del StatusBar
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      // Asegurar que el StatusBar esté configurado correctamente al volver a la pantalla
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.select({ ios: "padding", android: undefined })}
-    >
+    <SafeAreaView style={styles.container}>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor={COLORS.primary}
+        translucent={false}
+        animated={true}
+      />
+      {/* Header estilo Facebook */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Crear Publicación</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={handlePublicar} style={styles.saveButton}>
-            <Text style={styles.saveButtonText}>Publicar</Text>
+          <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
+            <MaterialCommunityIcons name="close" size={24} color={COLORS.surface} />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Crear publicación</Text>
         </View>
+                 <TouchableOpacity 
+           onPress={handlePublicar} 
+           style={[
+             styles.publishButton,
+             (!contenido.trim() && !selectedImage || isPublishing) && styles.publishButtonDisabled
+           ]}
+           disabled={(!contenido.trim() && !selectedImage) || isPublishing}
+         >
+                     <Text style={[
+             styles.publishButtonText,
+             (!contenido.trim() && !selectedImage || isPublishing) && styles.publishButtonTextDisabled
+           ]}>
+             {isPublishing ? "Publicando..." : "Publicar"}
+           </Text>
+        </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.formContainer}>
+      <KeyboardAvoidingView
+        style={styles.content}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Área de usuario */}
+          <View style={styles.userSection}>
+            <Avatar.Text
+              size={48}
+              label={avatarLetter}
+              style={styles.userAvatar}
+              color="white"
+            />
+                         <View style={styles.userInfo}>
+               <Text style={styles.userName}>
+                 {user?.nombre} {user?.apellidoPaterno}
+               </Text>
+               <View style={styles.selectorsRow}>
+                 <TouchableOpacity 
+                   style={styles.visibilitySelector}
+                   onPress={() => setVisibilidadMenuVisible(true)}
+                 >
+                   <MaterialCommunityIcons 
+                     name={visibilidad === "todos" ? "earth" : "account-group"} 
+                     size={16} 
+                     color={COLORS.primary} 
+                   />
+                   <Text style={styles.selectorText}>
+                     {visibilidad === "todos" ? "Público" : "Solo grupo"}
+                   </Text>
+                   <MaterialCommunityIcons name="chevron-down" size={16} color={COLORS.textSecondary} />
+                 </TouchableOpacity>
+                 
+                 <TouchableOpacity 
+                   style={styles.typeSelectorSmall}
+                   onPress={() => setTipoMenuVisible(true)}
+                 >
+                   <MaterialCommunityIcons 
+                     name={getTypeIcon(tipo)} 
+                     size={16} 
+                     color={COLORS.primary} 
+                   />
+                   <Text style={styles.selectorText}>
+                     {tipo}
+                   </Text>
+                   <MaterialCommunityIcons name="chevron-down" size={16} color={COLORS.textSecondary} />
+                 </TouchableOpacity>
+               </View>
+             </View>
+          </View>
 
+          {/* Área de texto principal */}
+          <View style={styles.textAreaContainer}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="¿En qué piensas?"
+              placeholderTextColor={COLORS.textSecondary}
+              multiline
+              value={contenido}
+              onChangeText={setContenido}
+              textAlignVertical="top"
+              autoFocus
+            />
+          </View>
 
-        {/* Selector de tipo */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Tipo de publicación</Text>
-          <Menu
-            visible={tipoMenuVisible}
-            onDismiss={() => setTipoMenuVisible(false)}
-            anchor={
-              <TouchableOpacity
-                style={styles.categorySelector}
-                onPress={() => setTipoMenuVisible(true)}
+          {/* Área de imagen */}
+          {selectedImage && (
+            <View style={styles.imagePreviewContainer}>
+              <TouchableOpacity 
+                onPress={openImageModal} 
+                style={styles.imagePreviewTouchable}
+                activeOpacity={0.8}
               >
-                <Text style={styles.categorySelectorText}>
-                  {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-                </Text>
+                <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
+                <View style={styles.imageOverlay}>
+                  <MaterialCommunityIcons name="magnify" size={32} color={COLORS.surface} />
+                  <Text style={styles.imageOverlayText}>Toca para ver completa</Text>
+                </View>
               </TouchableOpacity>
-            }
-          >
-            {["normal", "ayuda", "pregunta", "aviso"].map((item) => (
-              <Menu.Item
-                key={item}
-                onPress={() => {
-                  setTipo(item as any);
-                  setTipoMenuVisible(false);
-                }}
-                title={item.charAt(0).toUpperCase() + item.slice(1)}
+              <TouchableOpacity style={styles.removeImageButton} onPress={removeImage}>
+                <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Botón para agregar imagen */}
+          <View style={styles.imageActionsContainer}>
+            <TouchableOpacity 
+              style={[
+                styles.addImageButton,
+                selectedImage && styles.addImageButtonHidden
+              ]} 
+              onPress={pickImage}
+              disabled={!!selectedImage || isUploadingImage}
+            >
+              <MaterialCommunityIcons 
+                name={isUploadingImage ? "loading" : "image-plus"} 
+                size={20} 
+                color={selectedImage ? COLORS.textSecondary : COLORS.primary} 
               />
-            ))}
-          </Menu>
-        </View>
+              <Text style={[
+                styles.addImageText,
+                selectedImage && styles.addImageTextHidden
+              ]}>
+                {isUploadingImage ? "Subiendo..." : selectedImage ? "Imagen agregada" : "Agregar imagen"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-        
+           {/* Modales para selectores */}
+           <Modal
+             visible={tipoMenuVisible}
+             transparent
+             animationType="fade"
+             onRequestClose={() => setTipoMenuVisible(false)}
+           >
+             <TouchableWithoutFeedback onPress={() => setTipoMenuVisible(false)}>
+               <View style={styles.modalOverlay}>
+                 <TouchableWithoutFeedback onPress={() => {}}>
+                   <View style={styles.modalContent}>
+                     <Text style={styles.modalTitle}>Tipo de publicación</Text>
+                     {[
+                       { label: "General", value: "General", icon: "post" },
+                       { label: "Ayuda", value: "Ayuda", icon: "help-circle" },
+                       { label: "Pregunta", value: "Pregunta", icon: "help-circle-outline" },
+                       { label: "Aviso", value: "Aviso", icon: "bell" }
+                     ].map((item) => (
+                       <TouchableOpacity
+                         key={item.value}
+                         style={[
+                           styles.modalOption,
+                           tipo === item.value && styles.selectedModalOption
+                         ]}
+                         onPress={() => {
+                           setTipo(item.value as any);
+                           setTipoMenuVisible(false);
+                         }}
+                       >
+                         <MaterialCommunityIcons 
+                           name={item.icon as any} 
+                           size={20} 
+                           color={tipo === item.value ? COLORS.primary : COLORS.textSecondary} 
+                         />
+                         <Text style={[
+                           styles.modalOptionText,
+                           tipo === item.value && styles.selectedModalOptionText
+                         ]}>
+                           {item.label}
+                         </Text>
+                       </TouchableOpacity>
+                     ))}
+                   </View>
+                 </TouchableWithoutFeedback>
+               </View>
+             </TouchableWithoutFeedback>
+           </Modal>
 
-        {/* Selector de visibilidad */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Visibilidad</Text>
-          <Menu
-            visible={visibilidadMenuVisible}
-            onDismiss={() => setVisibilidadMenuVisible(false)}
-            anchor={
-              <TouchableOpacity
-                style={styles.categorySelector}
-                onPress={() => setVisibilidadMenuVisible(true)}
-              >
-                <Text style={styles.categorySelectorText}>
-                  {visibilidad === "grupo" ? "Solo grupo" : "Todos"}
-                </Text>
-              </TouchableOpacity>
-            }
-          >
-            <Menu.Item onPress={() => { setVisibilidad("todos"); setVisibilidadMenuVisible(false); }} title="Todos" />
-            <Menu.Item onPress={() => { setVisibilidad("grupo"); setVisibilidadMenuVisible(false); }} title="Solo grupo" />
-          </Menu>
-        </View>
+           <Modal
+             visible={visibilidadMenuVisible}
+             transparent
+             animationType="fade"
+             onRequestClose={() => setVisibilidadMenuVisible(false)}
+           >
+             <TouchableWithoutFeedback onPress={() => setVisibilidadMenuVisible(false)}>
+               <View style={styles.modalOverlay}>
+                 <TouchableWithoutFeedback onPress={() => {}}>
+                   <View style={styles.modalContent}>
+                     <Text style={styles.modalTitle}>Visibilidad</Text>
+                     <TouchableOpacity
+                       style={[
+                         styles.modalOption,
+                         visibilidad === "todos" && styles.selectedModalOption
+                       ]}
+                       onPress={() => {
+                         setVisibilidad("todos");
+                         setVisibilidadMenuVisible(false);
+                       }}
+                     >
+                       <MaterialCommunityIcons 
+                         name="earth" 
+                         size={20} 
+                         color={visibilidad === "todos" ? COLORS.primary : COLORS.textSecondary} 
+                       />
+                       <Text style={[
+                         styles.modalOptionText,
+                         visibilidad === "todos" && styles.selectedModalOptionText
+                       ]}>
+                         Público
+                       </Text>
+                     </TouchableOpacity>
+                     <TouchableOpacity
+                       style={[
+                         styles.modalOption,
+                         visibilidad === "grupo" && styles.selectedModalOption
+                       ]}
+                       onPress={() => {
+                         setVisibilidad("grupo");
+                         setVisibilidadMenuVisible(false);
+                       }}
+                     >
+                       <MaterialCommunityIcons 
+                         name="account-group" 
+                         size={20} 
+                         color={visibilidad === "grupo" ? COLORS.primary : COLORS.textSecondary} 
+                       />
+                       <Text style={[
+                         styles.modalOptionText,
+                         visibilidad === "grupo" && styles.selectedModalOptionText
+                       ]}>
+                         Solo grupo
+                       </Text>
+                     </TouchableOpacity>
+                   </View>
+                 </TouchableWithoutFeedback>
+               </View>
+             </TouchableWithoutFeedback>
+                      </Modal>
 
-            {/* Contenido que escribe el usuario para la realizacion de la publicacion*/}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Contenido</Text>
-          <TextInput
-            style={[styles.input, styles.contentInput]}
-            placeholder="¿Qué deseas publicar?"
-            multiline
-            value={contenido}
-            onChangeText={setContenido}
-          />
-        </View>
+           {/* Modal para ver imagen completa */}
+           <Modal
+             visible={imageModalVisible}
+             transparent
+             animationType="fade"
+             onRequestClose={closeImageModal}
+           >
+             <View style={styles.fullImageModalOverlay}>
+               <TouchableOpacity 
+                 style={styles.fullImageModalCloseButton} 
+                 onPress={closeImageModal}
+               >
+                 <MaterialCommunityIcons name="close" size={28} color={COLORS.surface} />
+               </TouchableOpacity>
+               <TouchableOpacity 
+                 style={styles.fullImageContainer} 
+                 onPress={closeImageModal}
+                 activeOpacity={1}
+               >
+                 <Image 
+                   source={{ uri: selectedImage || '' }} 
+                   style={styles.fullImage} 
+                   resizeMode="contain"
+                 />
+               </TouchableOpacity>
+             </View>
+           </Modal>
 
-      </ScrollView>
-     <Snackbar
+           {/* Contador de caracteres */}
+          {contenido.length > 0 && (
+            <View style={styles.characterCount}>
+              <Text style={styles.characterCountText}>
+                {contenido.length} caracteres
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
-        duration={2000}
+        duration={3000}
         style={{
-          backgroundColor: snackbarType === "success" ? COLORS.primary : "red",
+          backgroundColor: snackbarType === "success" ? COLORS.primary : COLORS.error,
+        }}
+        action={{
+          label: "OK",
+          onPress: () => setSnackbarVisible(false),
         }}
       >
-        <Text style={{ color: "white", textAlign: "center" }}>{snackbarMessage}</Text>
+        {snackbarMessage}
       </Snackbar>
-    </KeyboardAvoidingView>
-    
+    </SafeAreaView>
   );
+};
+
+// Función helper para obtener el icono del tipo
+const getTypeIcon = (tipo: string) => {
+  switch (tipo) {
+    case "General": return "post";
+    case "Ayuda": return "help-circle";
+    case "Pregunta": return "help-circle-outline";
+    case "Aviso": return "bell";
+    default: return "post";
+  }
 };
 
 export default CreatePostScreen;
@@ -182,180 +524,293 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    paddingBottom: 8
   },
   header: {
+    paddingTop: 40,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.primary,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.textSecondary,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4
+    borderBottomColor: COLORS.secondary,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1
+    flex: 1,
+  },
+  cancelButton: {
+    padding: 4,
+    marginRight: 12,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginLeft: 10
+    fontSize: 18,
+    fontWeight: "600",
+    color: COLORS.surface,
   },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center"
-  },
-  saveButton: {
-    marginLeft: 12,
-    backgroundColor: COLORS.primary,
+  publishButton: {
+    backgroundColor: COLORS.secondary,
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-    elevation: 2
+    paddingVertical: 8,
+    borderRadius: 20,
+    elevation: 3,
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
-  saveButtonText: {
-    color: "white",
+  publishButtonDisabled: {
+    backgroundColor: COLORS.textSecondary + "30",
+  },
+  publishButtonText: {
+    color: COLORS.surface,
     fontWeight: "700",
-    fontSize: 14
+    fontSize: 14,
   },
-  formContainer: {
-    flexGrow: 1,
-    padding: 20
+  publishButtonTextDisabled: {
+    color: COLORS.surface + "80",
   },
-  inputGroup: {
-    marginBottom: 24
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: COLORS.text,
-    marginBottom: 6
-  },
-  input: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: COLORS.textSecondary
-  },
-  contentInput: {
-    backgroundColor: COLORS.surface,
-    minHeight: 130,
-    textAlignVertical: "top",
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: COLORS.textSecondary
-  },
-  categorySelector: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.2,
-    borderColor: COLORS.textSecondary,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    minHeight: 58
-  },
-  categorySelectorText: {
-    fontSize: 16,
-    color: COLORS.text
-  },
-  previewContainer: {
+  content: {
     flex: 1,
-    marginTop: 24
   },
-  previewCard: {
-    backgroundColor: COLORS.surface,
-    elevation: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    borderRadius: 16,
-    padding: 20
+  scrollView: {
+    flex: 1,
   },
-  previewTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: COLORS.primary,
-    marginBottom: 10
-  },
-  previewMetadata: {
+  userSection: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: COLORS.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.05)",
   },
-  previewAuthor: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    fontWeight: "500"
-  },
-  previewDate: {
-    fontSize: 14,
-    color: COLORS.textSecondary
-  },
-  previewCategoryChip: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 16,
+  userAvatar: {
     backgroundColor: COLORS.primary,
-    marginBottom: 12
   },
-  previewCategoryText: {
-    color: "white",
-    fontSize: 13,
-    fontWeight: "600"
+  userInfo: {
+    marginLeft: 12,
+    flex: 1,
   },
-  previewContent: {
-    fontSize: 16,
-    lineHeight: 26,
-    color: COLORS.text
-  },
-  //CSS para el modal que aparece de confirmacion o error
+     userName: {
+     fontSize: 16,
+     fontWeight: "600",
+     color: COLORS.text,
+     marginBottom: 8,
+   },
+   selectorsRow: {
+     flexDirection: "row",
+     gap: 8,
+   },
+   visibilitySelector: {
+     flexDirection: "row",
+     alignItems: "center",
+     backgroundColor: COLORS.primary + "15",
+     paddingHorizontal: 8,
+     paddingVertical: 4,
+     borderRadius: 12,
+     alignSelf: "flex-start",
+     borderWidth: 1,
+     borderColor: COLORS.primary + "30",
+   },
+   typeSelectorSmall: {
+     flexDirection: "row",
+     alignItems: "center",
+     backgroundColor: COLORS.secondary + "15",
+     paddingHorizontal: 8,
+     paddingVertical: 4,
+     borderRadius: 12,
+     alignSelf: "flex-start",
+     borderWidth: 1,
+     borderColor: COLORS.secondary + "30",
+   },
+   selectorText: {
+     fontSize: 13,
+     color: COLORS.primary,
+     fontWeight: "500",
+     marginHorizontal: 4,
+   },
 
-  modalOverlay: {
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-  backgroundColor: "rgba(0,0,0,0.4)",
-},
-modalContent: {
-  backgroundColor: COLORS.surface,
-  padding: 20,
-  borderRadius: 12,
-  minWidth: "70%",
-  alignItems: "center",
-  elevation: 5,
-},
-modalText: {
-  fontSize: 16,
-  fontWeight: "600",
-  color: COLORS.text,
-  textAlign: "center",
-},
-modalSuccess: {
-  borderColor: COLORS.primary,
-  borderWidth: 2,
-},
-modalError: {
-  borderColor: "red",
-  borderWidth: 2,
-},
-
+  
+  textAreaContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: COLORS.surface,
+  },
+  textInput: {
+    fontSize: 18,
+    color: COLORS.text,
+    lineHeight: 24,
+    minHeight: 120,
+    textAlignVertical: "top",
+    padding: 0,
+  },
+  
+   characterCount: {
+     paddingHorizontal: 16,
+     paddingVertical: 8,
+     backgroundColor: COLORS.surface,
+     borderTopWidth: 1,
+     borderTopColor: "rgba(0,0,0,0.05)",
+   },
+   characterCountText: {
+     fontSize: 12,
+     color: COLORS.textSecondary,
+     textAlign: "right",
+   },
+   menuItemText: {
+     fontSize: 14,
+     color: COLORS.text,
+   },
+   modalOverlay: {
+     flex: 1,
+     backgroundColor: "rgba(0,0,0,0.5)",
+     justifyContent: "center",
+     alignItems: "center",
+   },
+   modalContent: {
+     backgroundColor: COLORS.surface,
+     borderRadius: 16,
+     padding: 24,
+     margin: 20,
+     minWidth: 280,
+     elevation: 8,
+     shadowColor: "#000",
+     shadowOffset: { width: 0, height: 4 },
+     shadowOpacity: 0.25,
+     shadowRadius: 8,
+   },
+   modalTitle: {
+     fontSize: 18,
+     fontWeight: "600",
+     color: COLORS.primary,
+     marginBottom: 16,
+     textAlign: "center",
+   },
+   modalOption: {
+     flexDirection: "row",
+     alignItems: "center",
+     paddingVertical: 12,
+     paddingHorizontal: 16,
+     borderRadius: 8,
+     marginVertical: 2,
+   },
+   selectedModalOption: {
+     backgroundColor: COLORS.primary + "15",
+     borderWidth: 1,
+     borderColor: COLORS.primary + "30",
+   },
+   modalOptionText: {
+     fontSize: 16,
+     color: COLORS.text,
+     marginLeft: 12,
+     flex: 1,
+   },
+   selectedModalOptionText: {
+     color: COLORS.primary,
+     fontWeight: "600",
+   },
+   imagePreviewContainer: {
+     marginHorizontal: 16,
+     marginVertical: 8,
+     borderRadius: 12,
+     overflow: "hidden",
+     position: "relative",
+   },
+   imagePreview: {
+     width: "100%",
+     height: 250,
+     borderRadius: 12,
+     resizeMode: "cover",
+   },
+   removeImageButton: {
+     position: "absolute",
+     top: 8,
+     right: 8,
+     backgroundColor: COLORS.surface,
+     borderRadius: 12,
+     padding: 2,
+     elevation: 3,
+     shadowColor: "#000",
+     shadowOffset: { width: 0, height: 2 },
+     shadowOpacity: 0.25,
+     shadowRadius: 4,
+   },
+   imageActionsContainer: {
+     paddingHorizontal: 16,
+     paddingVertical: 8,
+   },
+   addImageButton: {
+     flexDirection: "row",
+     alignItems: "center",
+     backgroundColor: COLORS.surface,
+     paddingHorizontal: 16,
+     paddingVertical: 12,
+     borderRadius: 12,
+     borderWidth: 2,
+     borderColor: COLORS.primary + "30",
+     borderStyle: "dashed",
+   },
+   addImageText: {
+     fontSize: 16,
+     color: COLORS.primary,
+     fontWeight: "500",
+     marginLeft: 8,
+   },
+   addImageButtonHidden: {
+     backgroundColor: COLORS.background,
+     borderColor: COLORS.textSecondary + "30",
+   },
+   addImageTextHidden: {
+     color: COLORS.textSecondary,
+   },
+   imagePreviewTouchable: {
+     position: "relative",
+   },
+   imageOverlay: {
+     position: "absolute",
+     top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 12,
+    opacity: 1,
+  },
+   fullImageModalOverlay: {
+     flex: 1,
+     backgroundColor: "rgba(0,0,0,0.9)",
+     justifyContent: "center",
+     alignItems: "center",
+   },
+   fullImageModalCloseButton: {
+     position: "absolute",
+     top: 50,
+     right: 20,
+     zIndex: 10,
+     backgroundColor: "rgba(0,0,0,0.5)",
+     borderRadius: 20,
+     padding: 8,
+   },
+   fullImageContainer: {
+     flex: 1,
+     width: "100%",
+     justifyContent: "center",
+     alignItems: "center",
+   },
+   fullImage: {
+     width: "100%",
+     height: "100%",
+   },
+   imageOverlayText: {
+     color: COLORS.surface,
+     fontSize: 14,
+     fontWeight: "500",
+     marginTop: 4,
+   },
 });
 

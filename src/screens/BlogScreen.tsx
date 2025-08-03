@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  Easing 
+  Easing,
+  TouchableWithoutFeedback
 } from "react-native";
 import {
   Card,
@@ -33,12 +34,16 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { eventBus } from "../utils/eventBus";
 import { useAuth } from "../contexts/AuthContext";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
 interface BlogScreenProps {
   navigation: NavigationProp<any>;
 }
 
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
+
+const ICON_SIZE = 18;
 
 const BlogScreen = ({ navigation }: BlogScreenProps) => {
   const { user } = useAuth();
@@ -57,7 +62,7 @@ const BlogScreen = ({ navigation }: BlogScreenProps) => {
         }
       };
  const [filtroVisibilidad, setFiltroVisibilidad] = useState<"todos" | "grupo">("todos");
-  const [filtroTipo, setFiltroTipo] = useState<"todas" | "normal" | "ayuda" | "pregunta" | "aviso">("todas");
+  const [filtroTipo, setFiltroTipo] = useState<"todas" | "General" | "Ayuda" | "Pregunta" | "Aviso">("todas");
   const [visibilidadMenuVisible, setVisibilidadMenuVisible] = useState(false);
   const [tipoMenuVisible, setTipoMenuVisible] = useState(false);
       
@@ -355,109 +360,95 @@ const handleAddComment = async () => {
         }
       }, [deleteModalVisible]);
 
+  const showFilterModal = (type: "visibilidad" | "tipo") => {
+    if (type === "visibilidad") {
+      setVisibilidadMenuVisible(true);
+    } else {
+      setTipoMenuVisible(true);
+    }
+  };
+
+  const hideFilterModal = () => {
+    setVisibilidadMenuVisible(false);
+    setTipoMenuVisible(false);
+  };
+
+  const getFilterLabel = (type: "visibilidad" | "tipo") => {
+    if (type === "visibilidad") {
+      return filtroVisibilidad === "todos" ? "Todos" : "Mi grupo";
+    } else {
+      return filtroTipo === "todas" ? "Todas" : filtroTipo.charAt(0).toUpperCase() + filtroTipo.slice(1);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={styles.titleContainer}>
+        <Text style={styles.screenTitle}>Blog</Text>
+        <View style={styles.titleAccent} />
+      </View>
       <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Buscar publicaciones..."
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          style={styles.searchbar}
-        />
-      </View>
-      <View style={styles.filtrosContainer}>
-      {/* Filtro visibilidad */}
-      <Menu
-        visible={visibilidadMenuVisible}
-        onDismiss={() => setVisibilidadMenuVisible(false)}
-        anchor={
-          <TouchableOpacity onPress={() => setVisibilidadMenuVisible(true)} style={styles.selector}>
-            <Text style={styles.selectorText}>
-              {filtroVisibilidad === "todos" ? "Todos" : "Mi grupo"}
-            </Text>
-          </TouchableOpacity>
-        }
-      >
-        <Menu.Item 
-          onPress={() => {
-            setFiltroVisibilidad("todos");
-            setVisibilidadMenuVisible(false);
-          }} 
-          title="Todos" 
-        />
-        <Menu.Item 
-          onPress={() => {
-            setFiltroVisibilidad("grupo");
-            setVisibilidadMenuVisible(false);
-          }} 
-          title="Mi grupo" 
-        />
-      </Menu>
-
-      {/* Filtro tipo */}
-      <Menu
-        visible={tipoMenuVisible}
-        onDismiss={() => setTipoMenuVisible(false)}
-        anchor={
-          <TouchableOpacity onPress={() => setTipoMenuVisible(true)} style={styles.selector}>
-            <Text style={styles.selectorText}>
-              {filtroTipo === "todas" ? "Todas" : filtroTipo.charAt(0).toUpperCase() + filtroTipo.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        }
-      >
-        {["todas", "normal", "ayuda", "pregunta", "aviso"].map((op) => (
-          <Menu.Item
-            key={op}
-            onPress={() => setFiltroTipo(op as any)}
-            title={op === "todas" ? "Todas" : op.charAt(0).toUpperCase() + op.slice(1)}
+        <View style={styles.searchbarWrapper}>
+          <Searchbar
+            placeholder="Buscar publicaciones..."
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchbar}
+            inputStyle={{ textAlignVertical: 'center' }}
           />
-        ))}
-      </Menu>
-    </View>
-
-
-      <ScrollView>
-    {filteredPosts.map((post) => (
-    <View key={post.id}>
-      <BlogCard
-        post={post}
-        expanded={expandedPostId === post.id}
-        userReaction={userReactions[post.id]}
-        onExpand={handleExpandPost}
-        onReact={handleReaction}
-        onComment={handleCommentPress}
-        onViewMore={() => {
-          // lógica que quieras para ver más
-        }}
-        comentarioCount={conteoComentarios[post.id] || 0}
-      />
-
-      {/* Botón de eliminar (solo si es del usuario actual) */}
-      {post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}` && (
-      <>
-      <View style={styles.floatingButtons}>
-        <IconButton
-          icon="pencil"
-          size={20}
-          onPress={() => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
-          style={[styles.floatingBtn, styles.editIcon]}
-          iconColor="white"
-        />
-        <IconButton
-          icon="delete"
-          size={20}
-          onPress={() => handleEliminar(post.id)}
-          style={[styles.floatingBtn, styles.deleteIcon]}
-          iconColor="white"
-        />
+        </View>
+        <View style={styles.filterButtons}>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => showFilterModal("visibilidad")}
+          >
+            <MaterialCommunityIcons name="account-group" size={ICON_SIZE} color={COLORS.surface} style={{ marginRight: 4 }} />
+            <Text style={styles.filterLabel}>
+              {getFilterLabel("visibilidad")}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => showFilterModal("tipo")}
+          >
+            <MaterialCommunityIcons name="shape" size={ICON_SIZE} color={COLORS.surface} style={{ marginRight: 4 }} />
+            <Text style={styles.filterLabel}>
+              {getFilterLabel("tipo")}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </>
-    )}
 
-    </View>
-  ))}
-</ScrollView>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        enabled
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingTop: 8, paddingBottom: 16 }}
+        >
+          {filteredPosts.map((post) => (
+            <View key={post.id} style={styles.blogCardWrapper}>
+              <BlogCard
+                post={post}
+                expanded={expandedPostId === post.id}
+                userReaction={userReactions[post.id]}
+                onExpand={handleExpandPost}
+                onReact={handleReaction}
+                onComment={handleCommentPress}
+                onViewMore={() => {
+                  // lógica que quieras para ver más
+                }}
+                comentarioCount={conteoComentarios[post.id] || 0}
+                onEdit={(post) => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
+                onDelete={handleEliminar}
+                isOwner={post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`}
+              />
+            </View>
+          ))}
+        </ScrollView>
+      </KeyboardAvoidingView>
+
       <FAB
         icon="plus"
         style={styles.fab}
@@ -467,7 +458,6 @@ const handleAddComment = async () => {
       />
       
       <Modal
-      
         visible={commentModalVisible}
         animationType="slide"
         transparent={true}
@@ -529,44 +519,117 @@ const handleAddComment = async () => {
           </View>
         </View>
       </Modal>
-      <Modal
-  visible={deleteModalVisible}
-  transparent
-  animationType="fade"
-  onRequestClose={() => setDeleteModalVisible(false)}
->
-  <View style={styles.modalOverlay}>
-    <Animated.View
-      style={[
-        styles.confirmModal,
-        {
-          opacity: opacityAnim,
-          transform: [{ scale: scaleAnim }],
-        },
-      ]}
-    >
-    <View style={styles.confirmModal}>
-      <Text style={styles.modalTitle}>¿Eliminar publicación?</Text>
-      <Text style={styles.modalText}>Esta acción no se puede deshacer.</Text>
-      <View style={styles.modalActions}>
-       <TouchableOpacity
-          style={[styles.modalButton, { backgroundColor: COLORS.textSecondary }]}
-          onPress={() => setDeleteModalVisible(false)}
-        >
-          <Text style={styles.modalButtonText}>Cancelar</Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.modalButton, { backgroundColor: COLORS.error }]}
-          onPress={confirmDeletePost}
-        >
-          <Text style={styles.modalButtonText}>Eliminar</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-    </Animated.View>
-  </View>
-</Modal>
+      <Modal
+        visible={deleteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Animated.View
+            style={[
+              styles.confirmModal,
+              {
+                opacity: opacityAnim,
+                transform: [{ scale: scaleAnim }],
+              },
+            ]}
+          >
+            <Text style={styles.modalTitle}>¿Eliminar publicación?</Text>
+            <Text style={styles.modalText}>Esta acción no se puede deshacer.</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: COLORS.textSecondary }]}
+                onPress={() => setDeleteModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: COLORS.error }]}
+                onPress={confirmDeletePost}
+              >
+                <Text style={styles.modalButtonText}>Eliminar</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={visibilidadMenuVisible || tipoMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={hideFilterModal}
+      >
+        <TouchableWithoutFeedback onPress={hideFilterModal}>
+          <View style={styles.modalContainer}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View>
+                <View style={styles.modalHandle} />
+                <View style={styles.filterModalContent}>
+                  <Text style={styles.modalTitle}>
+                    {visibilidadMenuVisible ? "Filtrar por visibilidad" : "Filtrar por tipo"}
+                  </Text>
+                  {visibilidadMenuVisible ? (
+                    [
+                      { label: "Todos", value: "todos" },
+                      { label: "Mi grupo", value: "grupo" }
+                    ].map(filter => (
+                      <TouchableOpacity
+                        key={filter.value}
+                        onPress={() => {
+                          setFiltroVisibilidad(filter.value as "todos" | "grupo");
+                          hideFilterModal();
+                        }}
+                        style={[
+                          styles.modalOption,
+                          filtroVisibilidad === filter.value && styles.selectedModalOption
+                        ]}
+                      >
+                        <Text style={[
+                          styles.modalOptionText,
+                          filtroVisibilidad === filter.value && styles.selectedModalOptionText
+                        ]}>
+                          {filter.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    [
+                      { label: "Todas", value: "todas" },
+                      { label: "General", value: "General" },
+                      { label: "Ayuda", value: "Ayuda" },
+                      { label: "Pregunta", value: "Pregunta" },
+                      { label: "Aviso", value: "Aviso" }
+                    ].map(filter => (
+                      <TouchableOpacity
+                        key={filter.value}
+                        onPress={() => {
+                          setFiltroTipo(filter.value as any);
+                          hideFilterModal();
+                        }}
+                        style={[
+                          styles.modalOption,
+                          filtroTipo === filter.value && styles.selectedModalOption
+                        ]}
+                      >
+                        <Text style={[
+                          styles.modalOptionText,
+                          filtroTipo === filter.value && styles.selectedModalOptionText
+                        ]}>
+                          {filter.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -576,15 +639,86 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  titleContainer: {
+    width: '100%',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    marginBottom: 0,
+    paddingBottom: 0,
+    elevation: 2,
+  },
+  screenTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.surface,
+    backgroundColor: COLORS.primary,
+    textAlign: 'center',
+    paddingVertical: 5,
+    width: '100%',
+  },
+  titleAccent: {
+    width: '40%',
+    height: 3,
+    backgroundColor: COLORS.secondary,
+    marginTop: -2,
+    marginBottom: 6,
+    borderRadius: 2,
+  },
   searchContainer: {
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    elevation: 4,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.secondary,
+    gap: 0,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  searchbarWrapper: {
+    marginBottom: 8,
   },
   searchbar: {
-    elevation: 0,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
+    fontSize: 16,
+    justifyContent: 'center',
+    textAlignVertical: 'center',
+    elevation: 2,
+  },
+  filterButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: 'center',
+    paddingHorizontal: 0,
+    paddingTop: 2,
+    gap: 8,
+  },
+  filterButton: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: COLORS.secondary,
+    borderRadius: 12,
+    marginHorizontal: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.secondary,
+    elevation: 2,
+  },
+  filterLabel: {
+    color: COLORS.surface,
+    fontSize: 13,
+    fontWeight: 'bold',
+    paddingHorizontal: 2,
+  },
+  blogCardWrapper: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   card: {
     margin: 8,
@@ -676,6 +810,13 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     height: "80%",
     paddingTop: 8,
+  },
+  filterModalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    minHeight: 180,
   },
   modalHeader: {
     flexDirection: "row",
@@ -823,52 +964,35 @@ modalButtonText: {
 },
 
 
-//diseño para los botones de eliminar y modificar
-floatingButtons: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    flexDirection: "row",
-    gap: 8, // separa los iconos
-    zIndex: 10,
-    paddingRight: 15,
-  },
-  floatingBtn: {
-    backgroundColor: "rgba(0,0,0,0.4)", // fondo translúcido neutro
-    borderRadius: 20,
-    elevation: 3,
-  },
-  editIcon: {
-    backgroundColor: "rgba(0,122,255,0.85)", // azul sutil
-  },
-  deleteIcon: {
-    backgroundColor: "rgba(255,77,77,0.85)", // rojo sutil
-  },
 
-  //diseño para los filtros de busqueda en la parte superior
-   filtrosContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    marginBottom: 16,
+
+  modalHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#ccc',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 8,
   },
-  selector: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: COLORS.background,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.textSecondary,
+  modalOption: {
+    paddingVertical: 14,
+    borderRadius: 8,
+    marginVertical: 2,
+    paddingHorizontal: 8,
   },
-  selectorText: {
+  selectedModalOption: {
+    backgroundColor: COLORS.primary + "20",
+  },
+  modalOptionText: {
+    fontSize: 16,
     color: COLORS.text,
-    fontWeight: "600",
-    fontSize: 14,
+    textAlign: 'center',
   },
-
+  selectedModalOptionText: {
+    color: COLORS.primary,
+    fontWeight: "bold",
+  },
 });
 
 export default BlogScreen;

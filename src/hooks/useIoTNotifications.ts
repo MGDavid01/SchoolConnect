@@ -1,11 +1,10 @@
 // src/hooks/useIoTNotifications.ts
 import { useState, useEffect, useCallback } from 'react';
-import { notificationService } from '../utils/notificationService';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../constants/api';
 
 interface IoTNotification {
-  _id: string;
+  _id: string; // MongoDB ObjectId como string
   grupoID: string;
   estudianteID: string;
   tutorID: string;
@@ -15,107 +14,117 @@ interface IoTNotification {
   mensaje?: string;
 }
 
-interface NotificationStats {
-  total: number;
-  leidas: number;
-  respondidas: number;
-  noLeidas: number;
-}
-
 export const useIoTNotifications = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<IoTNotification[]>([]);
-  const [stats, setStats] = useState<NotificationStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Configurar notificaciones al inicializar
-  useEffect(() => {
-    const setupNotifications = async () => {
-      try {
-        // Solicitar permisos
-        await notificationService.requestPermissions();
-        
-        // Configurar listeners
-        notificationService.setupNotificationListeners();
-        
-        // Obtener token de push
-        const token = await notificationService.getExpoPushToken();
-        if (token) {
-          console.log('Token de notificación obtenido:', token);
-          // Aquí podrías enviar el token al servidor para asociarlo con el usuario
-        }
-      } catch (error) {
-        console.error('Error configurando notificaciones:', error);
-      }
-    };
+  // Cargar notificaciones (con indicador de carga)
+  const loadNotifications = useCallback(async (filter: 'all' | 'unread' = 'all', showLoading: boolean = true) => {
+    if (!user?._id) {
+      console.log('❌ No hay usuario autenticado');
+      setError('Usuario no autenticado. Por favor inicia sesión.');
+      setNotifications([]);
+      return;
+    }
 
-    setupNotifications();
-  }, []);
-
-  // Cargar notificaciones
-  const loadNotifications = useCallback(async (filter: 'all' | 'unread' = 'all') => {
-    if (!user?._id) return;
-
-    setLoading(true);
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
-      const response = await fetch(
-        `${API_URL}/iot-notifications/student/${user._id}?unreadOnly=${filter === 'unread'}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      console.log('✅ Cargando notificaciones para usuario:', user._id);
+      const url = `${API_URL}/api/iot-notifications/student/${user._id}?unreadOnly=${filter === 'unread'}`;
+      console.log('🌐 URL de la petición:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('📡 Respuesta del servidor:', response.status, response.statusText);
 
       if (response.ok) {
         const data = await response.json();
-        setNotifications(data.data || []);
+        console.log('📦 Datos recibidos:', data);
+        
+        // Si no hay notificaciones, mostrar lista vacía sin error
+        if (!data.data || data.data.length === 0) {
+          setNotifications([]);
+          setError(null);
+          console.log('📭 No hay notificaciones para este usuario');
+        } else {
+          setNotifications(data.data);
+          setError(null);
+          console.log('📱 Notificaciones cargadas:', data.data.length);
+        }
       } else {
-        throw new Error('Error cargando notificaciones');
+        const errorText = await response.text();
+        console.error('❌ Error del servidor:', response.status, errorText);
+        
+        if (response.status === 404) {
+          // No hay notificaciones para este usuario
+          setNotifications([]);
+          setError(null);
+          console.log('📭 No se encontraron notificaciones para este usuario');
+        } else {
+          throw new Error(`Error ${response.status}: ${errorText}`);
+        }
       }
     } catch (error) {
-      console.error('Error cargando notificaciones:', error);
-      setError('No se pudieron cargar las notificaciones');
+      console.error('❌ Error cargando notificaciones:', error);
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setError('No se pudo conectar al servidor. Verifica tu conexión de red.');
+      } else {
+        setError(error instanceof Error ? error.message : 'No se pudieron cargar las notificaciones');
+      }
+      
+      setNotifications([]);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, [user?._id]);
 
-  // Cargar estadísticas
-  const loadStats = useCallback(async () => {
+  // Actualización silenciosa (sin indicadores)
+  const silentUpdate = useCallback(async () => {
     if (!user?._id) return;
 
     try {
-      const response = await fetch(
-        `${API_URL}/iot-notifications/stats/${user._id}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const url = `${API_URL}/api/iot-notifications/student/${user._id}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (response.ok) {
         const data = await response.json();
-        setStats(data.data);
-        setUnreadCount(data.data?.noLeidas || 0);
+        if (data.data) {
+          setNotifications(data.data);
+          setError(null);
+        }
       }
     } catch (error) {
-      console.error('Error cargando estadísticas:', error);
+      console.error('Error en actualización silenciosa:', error);
+      // No mostrar error en actualizaciones silenciosas
     }
   }, [user?._id]);
 
   // Marcar como leída
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
+      console.log('📝 Marcando como leída la notificación:', notificationId);
+      
       const response = await fetch(
-        `${API_URL}/iot-notifications/${notificationId}/read`,
+        `${API_URL}/api/iot-notifications/${notificationId}/read`,
         {
           method: 'PATCH',
           headers: {
@@ -124,7 +133,12 @@ export const useIoTNotifications = () => {
         }
       );
 
+      console.log('📡 Respuesta del servidor (marcar como leída):', response.status);
+
       if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Notificación marcada como leída en la BD:', data);
+        
         // Actualizar estado local
         setNotifications(prev =>
           prev.map(notif =>
@@ -133,20 +147,25 @@ export const useIoTNotifications = () => {
               : notif
           )
         );
-        
-        // Actualizar estadísticas
-        await loadStats();
+        return true;
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Error del servidor al marcar como leída:', response.status, errorText);
+        throw new Error(`Error ${response.status}: ${errorText}`);
       }
     } catch (error) {
-      console.error('Error marcando como leída:', error);
+      console.error('❌ Error marcando como leída:', error);
+      throw error;
     }
-  }, [loadStats]);
+  }, []);
 
   // Responder a notificación
   const respondToNotification = useCallback(async (notificationId: string) => {
     try {
+      console.log('📝 Respondiendo a la notificación:', notificationId);
+      
       const response = await fetch(
-        `${API_URL}/iot-notifications/${notificationId}/respond`,
+        `${API_URL}/api/iot-notifications/${notificationId}/respond`,
         {
           method: 'PATCH',
           headers: {
@@ -155,7 +174,12 @@ export const useIoTNotifications = () => {
         }
       );
 
+      console.log('📡 Respuesta del servidor (responder):', response.status);
+
       if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Notificación respondida en la BD:', data);
+        
         // Actualizar estado local
         setNotifications(prev =>
           prev.map(notif =>
@@ -165,108 +189,41 @@ export const useIoTNotifications = () => {
           )
         );
         
-        // Actualizar estadísticas
-        await loadStats();
-        
         return true;
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Error del servidor al responder:', response.status, errorText);
+        throw new Error(`Error ${response.status}: ${errorText}`);
       }
     } catch (error) {
-      console.error('Error respondiendo a notificación:', error);
-    }
-    
-    return false;
-  }, [loadStats]);
-
-  // Crear nueva notificación (para testing)
-  const createNotification = useCallback(async (notificationData: {
-    grupoID: string;
-    estudianteID: string;
-    tutorID: string;
-    mensaje?: string;
-  }) => {
-    try {
-      const response = await fetch(`${API_URL}/iot-notifications/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(notificationData),
-      });
-
-      if (response.ok) {
-        // Recargar notificaciones
-        await loadNotifications();
-        await loadStats();
-        return true;
-      }
-    } catch (error) {
-      console.error('Error creando notificación:', error);
-    }
-    
-    return false;
-  }, [loadNotifications, loadStats]);
-
-  // Enviar notificación local cuando se recibe una nueva
-  const sendLocalNotification = useCallback(async (notification: IoTNotification) => {
-    try {
-      const notificationData = notificationService.createTutorCallNotification(
-        notification.tutorID.split('@')[0],
-        notification.grupoID,
-        notification._id
-      );
-
-      await notificationService.sendLocalNotification(notificationData);
-    } catch (error) {
-      console.error('Error enviando notificación local:', error);
+      console.error('❌ Error respondiendo a notificación:', error);
+      throw error;
     }
   }, []);
 
-  // Polling para nuevas notificaciones
+  // Carga inicial con indicador de carga
+  useEffect(() => {
+    if (!user?._id) return;
+    loadNotifications('all', true); // Carga inicial con loading
+  }, [user?._id, loadNotifications]);
+
+  // Polling silencioso cada 1 minuto
   useEffect(() => {
     if (!user?._id) return;
 
-    // Cargar datos iniciales
-    loadNotifications();
-    loadStats();
-
-    // Configurar polling cada 30 segundos
     const interval = setInterval(() => {
-      loadNotifications();
-      loadStats();
-    }, 30000);
+      silentUpdate(); // Actualización silenciosa
+    }, 60000); // 60 segundos = 1 minuto
 
     return () => clearInterval(interval);
-  }, [user?._id, loadNotifications, loadStats]);
-
-  // Verificar nuevas notificaciones y enviar notificaciones locales
-  useEffect(() => {
-    const checkNewNotifications = async () => {
-      if (notifications.length > 0) {
-        const unreadNotifications = notifications.filter(n => !n.leido);
-        
-        for (const notification of unreadNotifications) {
-          // Solo enviar notificación local si es del usuario actual
-          if (notification.estudianteID === user?._id) {
-            await sendLocalNotification(notification);
-          }
-        }
-      }
-    };
-
-    checkNewNotifications();
-  }, [notifications, user?._id, sendLocalNotification]);
+  }, [user?._id, silentUpdate]);
 
   return {
     notifications,
-    stats,
     loading,
     error,
-    unreadCount,
     loadNotifications,
-    loadStats,
     markAsRead,
     respondToNotification,
-    createNotification,
-    sendLocalNotification,
   };
 }; 
