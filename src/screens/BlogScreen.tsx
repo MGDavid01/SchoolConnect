@@ -500,6 +500,8 @@ const handleAddComment = async () => {
                 onEdit={(post) => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
                 onDelete={handleEliminar}
                 isOwner={post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`}
+                isSaved={savedPosts.includes(post.id)}
+                onToggleSave={toggleGuardar}
               />
             </View>
           ))}

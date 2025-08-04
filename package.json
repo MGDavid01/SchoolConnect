@@ -7,7 +7,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "dev": "ts-node-dev src/server.ts"
+    "dev": "ts-node-dev src/server.ts",
+    "test-cloudinary": "node src/testCloudinary.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",

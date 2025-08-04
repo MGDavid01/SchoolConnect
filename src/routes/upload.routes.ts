@@ -28,18 +28,54 @@ const upload = multer({
 
 // Ruta para subir imagen a Cloudinary
 router.post('/upload-image', upload.single('image'), async (req: MulterRequest, res: Response) => {
+  console.log('🚀 Iniciando ruta de subida de imagen...');
+  
   try {
     if (!req.file) {
+      console.log('❌ No se proporcionó archivo');
       return res.status(400).json({ 
         success: false, 
         message: 'No se proporcionó ninguna imagen' 
       });
     }
 
+    console.log('📁 Archivo recibido:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      buffer: req.file.buffer ? '✅ Presente' : '❌ Ausente'
+    });
+
+    // Validar que las credenciales de Cloudinary estén configuradas
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    
+    console.log('🔑 Credenciales Cloudinary:', {
+      cloudName: cloudName ? '✅ Configurado' : '❌ No configurado',
+      apiKey: apiKey ? '✅ Configurado' : '❌ No configurado',
+      apiSecret: apiSecret ? '✅ Configurado' : '❌ No configurado'
+    });
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      console.error('❌ Error: Credenciales de Cloudinary no configuradas');
+      return res.status(500).json({
+        success: false,
+        message: 'Error de configuración del servidor'
+      });
+    }
+
+    console.log('📤 Iniciando subida de imagen a Cloudinary...');
+    console.log('📁 Tamaño del archivo:', req.file.size, 'bytes');
+    console.log('📋 Tipo MIME:', req.file.mimetype);
+
     // Convertir el buffer a base64
+    console.log('🔄 Convirtiendo buffer a base64...');
     const b64 = Buffer.from(req.file.buffer).toString('base64');
     const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+    console.log('✅ Conversión completada, dataURI length:', dataURI.length);
 
+    console.log('☁️ Subiendo a Cloudinary...');
     // Subir a Cloudinary
     const result = await cloudinary.uploader.upload(dataURI, {
       folder: 'schoolconnect',
@@ -50,6 +86,10 @@ router.post('/upload-image', upload.single('image'), async (req: MulterRequest, 
       ]
     });
 
+    console.log('✅ Imagen subida exitosamente a Cloudinary');
+    console.log('🔗 URL:', result.secure_url);
+    console.log('🆔 Public ID:', result.public_id);
+
     res.json({
       success: true,
       imageUrl: result.secure_url,
@@ -58,10 +98,29 @@ router.post('/upload-image', upload.single('image'), async (req: MulterRequest, 
     });
 
   } catch (error) {
-    console.error('Error al subir imagen:', error);
+    console.error('❌ Error al subir imagen:', error);
+    console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'No stack trace available');
+    
+    // Manejar errores específicos de Cloudinary
+    if (error instanceof Error) {
+      if (error.message.includes('Invalid api_key')) {
+        return res.status(500).json({
+          success: false,
+          message: 'Error de configuración: API key inválida'
+        });
+      }
+      if (error.message.includes('Invalid cloud_name')) {
+        return res.status(500).json({
+          success: false,
+          message: 'Error de configuración: Cloud name inválido'
+        });
+      }
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Error al subir la imagen'
+      message: 'Error al subir la imagen. Verifica la configuración de Cloudinary.',
+      error: error instanceof Error ? error.message : 'Error desconocido'
     });
   }
 });

@@ -192,16 +192,20 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
           <View style={styles.requirementsSection}>
             <Title style={styles.sectionTitle}>Requisitos</Title>
             <List.Section>
-              {scholarship.requisitos.map((requirement, index) => (
-                <List.Item
-                  key={`requirement-${index}`}
-                  title={requirement}
-                  left={props => <List.Icon {...props} icon="check-circle" color={COLORS.primary} />}
-                  titleStyle={styles.requirementText}
-                  style={styles.listItem}
-                  accessibilityLabel={`Requisito ${index + 1}: ${requirement}`}
-                />
-              ))}
+              {scholarship.requisitos && scholarship.requisitos.length > 0 ? (
+                scholarship.requisitos.map((requirement, index) => (
+                  <List.Item
+                    key={`requirement-${index}`}
+                    title={requirement}
+                    left={props => <List.Icon {...props} icon="check-circle" color={COLORS.primary} />}
+                    titleStyle={styles.requirementText}
+                    style={styles.listItem}
+                    accessibilityLabel={`Requisito ${index + 1}: ${requirement}`}
+                  />
+                ))
+              ) : (
+                <Text style={styles.noRequirements}>No hay requisitos específicos para esta beca.</Text>
+              )}
             </List.Section>
           </View>
 
@@ -353,6 +357,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.text,
     lineHeight: 20,
+  },
+  noRequirements: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 10,
+    fontStyle: 'italic',
   },
   contactSection: {
     marginTop: 20,

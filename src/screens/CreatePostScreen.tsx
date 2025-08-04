@@ -34,7 +34,8 @@ const CreatePostScreen = () => {
   const [visibilidad, setVisibilidad] = useState<"todos" | "grupo">("todos");
   const [isPublishing, setIsPublishing] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
+  const [selectedImageFile, setSelectedImageFile] = useState<any>(null);
+  const [imageChanged, setImageChanged] = useState(false);
   const [tipoMenuVisible, setTipoMenuVisible] = useState(false);
   const [visibilidadMenuVisible, setVisibilidadMenuVisible] = useState(false);
   const [imageModalVisible, setImageModalVisible] = useState(false);
@@ -57,15 +58,45 @@ const CreatePostScreen = () => {
     setIsPublishing(true);
 
     try {
+      let imageUrl = null;
+
+      // Subir imagen a Cloudinary solo si hay una imagen seleccionada
+      if (selectedImageFile && imageChanged) {
+        setIsUploadingImage(true);
+        try {
+          const formData = new FormData();
+          formData.append('image', selectedImageFile);
+
+          const uploadResponse = await axios.post(`${API_URL}/api/upload/upload-image`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+
+          if (uploadResponse.data.success) {
+            imageUrl = uploadResponse.data.imageUrl;
+          } else {
+            throw new Error('Error al subir imagen');
+          }
+        } catch (uploadError) {
+          console.error('Error al subir imagen:', uploadError);
+          setSnackbarMessage("Error al subir la imagen. Intenta de nuevo.");
+          setSnackbarType("error");
+          setSnackbarVisible(true);
+          setIsPublishing(false);
+          setIsUploadingImage(false);
+          return;
+        } finally {
+          setIsUploadingImage(false);
+        }
+      }
+
       const nuevaPublicacion = {
-        autorID: user?._id,
         contenido: contenido.trim(),
-        grupoID: user?.grupoID,
         tipo,
         visibilidad,
-        imagenURL: selectedImage || null,
-        fecha: new Date(),
-        activo: true,
+        imagenURL: imageUrl,
+        autorID: user?._id,
       };
 
       const response = await axios.post(`${API_URL}/api/publicaciones`, nuevaPublicacion);
@@ -75,14 +106,22 @@ const CreatePostScreen = () => {
         setSnackbarType("success");
         setSnackbarVisible(true);
 
+        // Limpiar el formulario
+        setContenido("");
+        setTipo("General");
+        setVisibilidad("todos");
+        setSelectedImage(null);
+        setSelectedImageFile(null);
+        setImageChanged(false);
+
         setTimeout(() => {
           setSnackbarVisible(false);
           navigation.goBack();
         }, 2000);
       }
     } catch (error) {
-      console.error("Error al publicar:", error);
-      setSnackbarMessage("No se pudo publicar. Intenta de nuevo.");
+      console.error("Error al crear publicación:", error);
+      setSnackbarMessage("No se pudo crear la publicación. Intenta de nuevo.");
       setSnackbarType("error");
       setSnackbarVisible(true);
     } finally {
@@ -130,44 +169,21 @@ const CreatePostScreen = () => {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setIsUploadingImage(true);
-        
-        try {
-          // Crear FormData para enviar la imagen
-          const formData = new FormData();
-          formData.append('image', {
-            uri: result.assets[0].uri,
-            type: 'image/jpeg',
-            name: 'image.jpg',
-          } as any);
-
-          // Subir imagen a Cloudinary
-          const uploadResponse = await axios.post(`${API_URL}/api/upload/upload-image`, formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-          });
-
-          if (uploadResponse.data.success) {
-            setSelectedImage(uploadResponse.data.imageUrl);
-            setSnackbarMessage("Imagen subida exitosamente");
-            setSnackbarType("success");
-            setSnackbarVisible(true);
-          } else {
-            throw new Error('Error al subir imagen');
-          }
-        } catch (uploadError) {
-          console.error('Error al subir imagen:', uploadError);
-          setSnackbarMessage("Error al subir la imagen. Intenta de nuevo.");
-          setSnackbarType("error");
-          setSnackbarVisible(true);
-        } finally {
-          setIsUploadingImage(false);
-        }
+        // Guardar la imagen localmente sin subir a Cloudinary
+        setSelectedImage(result.assets[0].uri);
+        setSelectedImageFile({
+          uri: result.assets[0].uri,
+          type: 'image/jpeg',
+          name: 'image.jpg',
+        });
+        setImageChanged(true); // Marcar que la imagen cambió
+        setSnackbarMessage("Imagen seleccionada");
+        setSnackbarType("success");
+        setSnackbarVisible(true);
       }
     } catch (error) {
-      console.error('Error al seleccionar/subir imagen:', error);
-      setSnackbarMessage("Error al subir la imagen. Intenta de nuevo.");
+      console.error('Error al seleccionar imagen:', error);
+      setSnackbarMessage("Error al seleccionar la imagen. Intenta de nuevo.");
       setSnackbarType("error");
       setSnackbarVisible(true);
     }
@@ -175,6 +191,8 @@ const CreatePostScreen = () => {
 
   const removeImage = () => {
     setSelectedImage(null);
+    setSelectedImageFile(null);
+    setImageChanged(true); // Marcar que la imagen cambió (se removió)
   };
 
   const openImageModal = () => {
@@ -306,10 +324,21 @@ const CreatePostScreen = () => {
                 activeOpacity={0.8}
               >
                 <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
-                <View style={styles.imageOverlay}>
-                  <MaterialCommunityIcons name="magnify" size={32} color={COLORS.surface} />
-                  <Text style={styles.imageOverlayText}>Toca para ver completa</Text>
-                </View>
+                {/* Botón cambiar imagen en esquina inferior izquierda */}
+                <TouchableOpacity 
+                  style={styles.changeImageButton} 
+                  onPress={pickImage}
+                  disabled={isUploadingImage}
+                >
+                  <MaterialCommunityIcons 
+                    name={isUploadingImage ? "loading" : "image-edit"} 
+                    size={16} 
+                    color={COLORS.primary} 
+                  />
+                  <Text style={styles.changeImageText}>
+                    {isUploadingImage ? "Subiendo..." : "Cambiar"}
+                  </Text>
+                </TouchableOpacity>
               </TouchableOpacity>
               <TouchableOpacity style={styles.removeImageButton} onPress={removeImage}>
                 <MaterialCommunityIcons name="close-circle" size={24} color={COLORS.error} />
@@ -319,26 +348,22 @@ const CreatePostScreen = () => {
 
           {/* Botón para agregar imagen */}
           <View style={styles.imageActionsContainer}>
-            <TouchableOpacity 
-              style={[
-                styles.addImageButton,
-                selectedImage && styles.addImageButtonHidden
-              ]} 
-              onPress={pickImage}
-              disabled={!!selectedImage || isUploadingImage}
-            >
-              <MaterialCommunityIcons 
-                name={isUploadingImage ? "loading" : "image-plus"} 
-                size={20} 
-                color={selectedImage ? COLORS.textSecondary : COLORS.primary} 
-              />
-              <Text style={[
-                styles.addImageText,
-                selectedImage && styles.addImageTextHidden
-              ]}>
-                {isUploadingImage ? "Subiendo..." : selectedImage ? "Imagen agregada" : "Agregar imagen"}
-              </Text>
-            </TouchableOpacity>
+            {!selectedImage ? (
+              <TouchableOpacity 
+                style={styles.addImageButton} 
+                onPress={pickImage}
+                disabled={isUploadingImage}
+              >
+                <MaterialCommunityIcons 
+                  name={isUploadingImage ? "loading" : "image-plus"} 
+                  size={20} 
+                  color={COLORS.primary} 
+                />
+                <Text style={styles.addImageText}>
+                  {isUploadingImage ? "Subiendo..." : "Agregar imagen"}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
 
            {/* Modales para selectores */}
@@ -769,18 +794,6 @@ const styles = StyleSheet.create({
    imagePreviewTouchable: {
      position: "relative",
    },
-   imageOverlay: {
-     position: "absolute",
-     top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 12,
-    opacity: 1,
-  },
    fullImageModalOverlay: {
      flex: 1,
      backgroundColor: "rgba(0,0,0,0.9)",
@@ -806,11 +819,23 @@ const styles = StyleSheet.create({
      width: "100%",
      height: "100%",
    },
-   imageOverlayText: {
-     color: COLORS.surface,
-     fontSize: 14,
+   changeImageButton: {
+     position: "absolute",
+     bottom: 8,
+     left: 8,
+     backgroundColor: COLORS.surface,
+     borderRadius: 12,
+     padding: 4,
+     flexDirection: "row",
+     alignItems: "center",
+     borderWidth: 1,
+     borderColor: COLORS.primary + "30",
+   },
+   changeImageText: {
+     fontSize: 12,
+     color: COLORS.primary,
      fontWeight: "500",
-     marginTop: 4,
+     marginLeft: 4,
    },
 });
 

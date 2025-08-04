@@ -452,28 +452,11 @@ useEffect(() => {
                   onExpand={(id) => setExpandedPostId((prev) => (prev === id ? null : id))}
                   onReact={handleReaction}
                   onComment={handleCommentPress}
-                  extraActions={post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`
-                    ? (
-                      <View style={styles.floatingButtons}>
-                        <IconButton
-                          icon="pencil"
-                          size={20}
-                          onPress={() => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
-                          style={[styles.floatingBtn, styles.editIcon]}
-                          iconColor="white" />
-                        <IconButton
-                          icon="delete"
-                          size={20}
-                          onPress={() => handleEliminar(post.id)}
-                          style={[styles.floatingBtn, styles.deleteIcon]}
-                          iconColor="white" />
-                      </View>
-                    )
-                    : null}
+                  extraActions={post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`}
                   isSaved={savedPosts.includes(post.id)}
-                  onToggleSave={toggleGuardar} onViewMore={function (): void {
-                    throw new Error("Function not implemented.");
-                  } } comentarioCount={conteoComentarios[post.id] || 0}                    
+                  onToggleSave={toggleGuardar}
+                  onViewMore={() => {}}
+                  comentarioCount={conteoComentarios[post.id] || 0}
                    />
                       </View>
                     ))}
@@ -509,24 +492,7 @@ useEffect(() => {
                   }
                   onReact={handleReaction}
                   onComment={handleCommentPress}
-                  extraActions={post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`
-                    ? (
-                      <View style={styles.floatingButtons}>
-                        <IconButton
-                          icon="pencil"
-                          size={20}
-                          onPress={() => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
-                          style={[styles.floatingBtn, styles.editIcon]}
-                          iconColor="white" />
-                        <IconButton
-                          icon="delete"
-                          size={20}
-                          onPress={() => handleEliminar(post.id)}
-                          style={[styles.floatingBtn, styles.deleteIcon]}
-                          iconColor="white" />
-                      </View>
-                    )
-                    : null}
+                  extraActions={post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`}
                   onViewMore={() => {}}
                   comentarioCount={conteoComentarios[post.id] || 0}
                   isSaved={savedPosts.includes(post.id)}

@@ -36,12 +36,12 @@ export const calendarTheme = {
   textMonthFontSize: 18,
   textDayHeaderFontSize: 14,
   monthTextColor: COLORS.primary,
-  textMonthFontWeight: 'bold',
+  textMonthFontWeight: 'bold' as const,
   arrowColor: COLORS.primary,
   textDisabledColor: '#d9d9d9',
   dayTextColor: COLORS.text,
-  textDayFontWeight: '300',
-  textDayHeaderFontWeight: '500',
+  textDayFontWeight: '300' as const,
+  textDayHeaderFontWeight: '500' as const,
   'stylesheet.calendar.header': {
     header: {
       flexDirection: 'row',
@@ -52,7 +52,7 @@ export const calendarTheme = {
     },
     monthText: {
       fontSize: 18,
-      fontWeight: 'bold',
+      fontWeight: 'bold' as const,
       color: COLORS.primary,
     },
   },

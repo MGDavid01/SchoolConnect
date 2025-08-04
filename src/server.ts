@@ -17,8 +17,17 @@ import iotNotificationsRoutes from "./routes/iot-notifications.routes";
 import comentarioRoutes from "./routes/comentario.routes";
 import userRoutes from "./routes/user.routes";
 import uploadRoutes from "./routes/upload.routes";
+import guardadoRoutes from "./routes/save.route";
 
 dotenv.config();
+
+// Verificar variables de entorno críticas
+console.log('🔍 Verificando variables de entorno...');
+console.log('CLOUDINARY_CLOUD_NAME:', process.env.CLOUDINARY_CLOUD_NAME ? '✅ Configurado' : '❌ No configurado');
+console.log('CLOUDINARY_API_KEY:', process.env.CLOUDINARY_API_KEY ? '✅ Configurado' : '❌ No configurado');
+console.log('CLOUDINARY_API_SECRET:', process.env.CLOUDINARY_API_SECRET ? '✅ Configurado' : '❌ No configurado');
+console.log('MONGODB_URI:', process.env.MONGODB_URI ? '✅ Configurado' : '❌ No configurado');
+console.log('PORT:', process.env.PORT || '4000 (por defecto)');
 
 const app = express();
 const server = createServer(app);
@@ -85,6 +94,7 @@ app.use("/api/iot-notifications", iotNotificationsRoutes); // IoT notifications 
 app.use("/api/comentarios", comentarioRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/guardados", guardadoRoutes);
 
 app.get("/", (req, res) => {
   res.send("API funcionando ✅");

@@ -78,6 +78,7 @@ export const usePosts = ({ likedOnly  = false }: { likedOnly ?: boolean } = {}) 
         dislikes: conteosReacciones[item._id]?.dislike || 0,
         comments: [],
         type: "blog",
+        guardada: false, // Agregar propiedad requerida
       }));
 
       setPosts(parsedPosts);

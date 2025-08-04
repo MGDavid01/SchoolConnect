@@ -124,12 +124,7 @@ const BlogNavigator: React.FC<NavigatorProps> = ({ active }) => {
           name="EditPost" 
           component={EditPostScreen}
           options={{
-            headerShown: true,
-            headerTitle: "Editar Publicación",
-            headerStyle: {
-              backgroundColor: COLORS.primary
-            },
-            headerTintColor: COLORS.surface
+            headerShown: false
           }}
         />
       </BlogStack.Navigator>
@@ -192,12 +187,7 @@ const ProfileNavigator: React.FC<NavigatorProps> = ({ active }) => {
           name="EditPost"
           component={EditPostScreen}
           options={{
-            headerShown: true,
-            headerTitle: "Editar Publicación",
-            headerStyle: {
-              backgroundColor: COLORS.primary,
-            },
-            headerTintColor: COLORS.surface,
+            headerShown: false
           }}
         />
       </ProfileStack.Navigator>

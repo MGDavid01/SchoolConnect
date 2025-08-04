@@ -16,6 +16,9 @@ interface BlogCardProps {
   onEdit?: (post: BlogPost) => void;
   onDelete?: (postId: string) => void;
   isOwner?: boolean;
+  isSaved?: boolean;
+  onToggleSave?: (postId: string, isSaved: boolean) => void;
+  extraActions?: boolean;
 }
 
 const BlogCard = ({
@@ -29,6 +32,8 @@ const BlogCard = ({
   onEdit,
   onDelete,
   isOwner = false,
+  isSaved = false,
+  onToggleSave,
 }: BlogCardProps) => {
   const [menuVisible, setMenuVisible] = useState(false);
   const [imageModalVisible, setImageModalVisible] = useState(false);
@@ -134,13 +139,6 @@ const BlogCard = ({
             activeOpacity={0.8}
           >
             <Image source={{ uri: post.imageUrl }} style={styles.image} />
-            <View style={styles.imageOverlay}>
-              <IconButton
-                icon="magnify"
-                size={24}
-                iconColor={COLORS.surface}
-              />
-            </View>
           </TouchableOpacity>
         </View>
       )}
@@ -342,24 +340,6 @@ const styles = StyleSheet.create({
   imageTouchable: {
     position: "relative",
   },
-  imageOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 12,
-    opacity: 1,
-  },
-  imageOverlayText: {
-    color: COLORS.surface,
-    fontSize: 12,
-    fontWeight: "500",
-    marginTop: 4,
-  },
   fullImageModalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.9)",
@@ -420,6 +400,14 @@ const styles = StyleSheet.create({
   },
   deleteMenuItem: {
     color: COLORS.error,
+  },
+  reactionBtn: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 20,
+    padding: 8,
   },
 });
 

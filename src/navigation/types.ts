@@ -111,7 +111,7 @@ export interface BlogPost {
 export type BlogStackParamList = {
   BlogList: undefined;
   CreatePost: undefined;
-  EditPost: { post: BlogPost };
+  EditPost: { post: BlogPost; onSave: (updatedPost: BlogPost) => void };
 };
 
 

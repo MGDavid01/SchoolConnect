@@ -1,11 +1,30 @@
 import React from "react"
-import { FlatList, View, StyleSheet, ListRenderItem } from "react-native"
+import { FlatList, ListRenderItem, StyleSheet, View, Text } from "react-native"
+import { COLORS } from "../theme/theme"
 import NewsCard from "./NewsCard"
 import BlogPostCard from "./BlogCard"
 import ScholarshipCard from "./ScholarshipCard"
-import { Text } from "react-native-paper"
-import { COLORS } from "../theme/theme"
 import { Comment } from "../types/blog"
+
+// Importar el tipo Scholarship desde ScholarshipCard
+interface Scholarship {
+  _id: string;
+  titulo: string;
+  descripcion: string;
+  requisitos: string[];
+  promedioMinimo?: number;
+  sinReprobadas?: boolean;
+  documentos?: string[];
+  condicionEspecial?: string;
+  fechaInicio: string;
+  fechaFin: string;
+  tipo: string;
+  activo: boolean;
+  autorID: string;
+  fechaPublicacion: string;
+  monto?: number;
+  institucion?: string;
+}
 
 // Define tipos para cada item según el tipo
 type NewsItem = {
@@ -30,6 +49,7 @@ type BlogItem = {
   dislikes: number
   comments: Comment[]
   type: string
+  guardada: any
 }
 
 
@@ -88,16 +108,31 @@ export default function UnifiedPostList({
   onComment={(comment) => {
     // lógica para agregar comentario
   }}
+  comentarioCount={blogItem.comments?.length || 0}
         />
       )
     }
     if (type === "scholarship") {
       const scholarshipItem = item as ScholarshipItem
+      // Mapear ScholarshipItem a Scholarship
+      const scholarship: Scholarship = {
+        _id: scholarshipItem.id,
+        titulo: scholarshipItem.title,
+        descripcion: scholarshipItem.description,
+        requisitos: [], // Placeholder, needs actual data
+        fechaInicio: scholarshipItem.deadline,
+        fechaFin: scholarshipItem.deadline,
+        tipo: scholarshipItem.type,
+        activo: true,
+        autorID: "placeholder", // Placeholder
+        fechaPublicacion: new Date().toISOString(),
+        monto: parseFloat(scholarshipItem.amount) || undefined,
+        institucion: scholarshipItem.institution
+      }
       return (
         <ScholarshipCard
-          scholarship={scholarshipItem}
+          scholarship={scholarship}
           onPress={onItemPress}
-          onToggleFavorite={onToggleFavorite ?? (() => {})}
         />
       )
     }

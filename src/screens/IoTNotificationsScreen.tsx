@@ -9,6 +9,8 @@ import {
   Alert,
   RefreshControl,
   Clipboard,
+  ViewStyle,
+  TextStyle,
 } from 'react-native';
 import { SafeAreaView, Edge } from 'react-native-safe-area-context';
 import { useIoTNotifications } from '../hooks/useIoTNotifications';
@@ -27,6 +29,11 @@ interface IoTNotification {
   respondido: boolean;
   mensaje?: string;
 }
+
+const TABS = [
+  { key: 'pendientes', label: 'Pendientes' },
+  { key: 'leidas', label: 'Leídas' },
+];
 
 // Función para formatear fechas
 const formatDate = (dateString: string) => {
@@ -64,6 +71,16 @@ const IoTNotificationsScreen: React.FC = () => {
   const { pendingCount } = usePendingNotifications();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'pendientes' | 'leidas'>('pendientes');
+
+  // Filtrar notificaciones según la pestaña activa
+  const filteredNotifications = notifications.filter(notification => {
+    if (activeTab === 'pendientes') {
+      return !notification.leido;
+    } else {
+      return notification.leido;
+    }
+  });
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -166,65 +183,81 @@ const IoTNotificationsScreen: React.FC = () => {
     );
   };
 
+  const renderEmptyState = () => {
+    const emptyMessages = {
+      pendientes: {
+        icon: 'notifications-off',
+        title: 'No hay notificaciones pendientes',
+      },
+      leidas: {
+        icon: 'checkmark-circle',
+        title: 'No hay notificaciones leídas',
+      }
+    };
+
+    const message = emptyMessages[activeTab];
+
     return (
-    <SafeAreaView style={styles.container} edges={['top'] as Edge[]}>
-      <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <Ionicons name="notifications" size={28} color={COLORS.primary} />
-            <Text style={styles.title}>Notificaciones</Text>
-          </View>
-          <View style={styles.headerSubtitle}>
-            <Text style={styles.subtitleText}>
-              {pendingCount} pendiente{pendingCount !== 1 ? 's' : ''}
-            </Text>
-          </View>
+      <View style={styles.emptyContainer}>
+        <View style={styles.emptyIconContainer}>
+          <Ionicons name={message.icon as any} size={80} color={COLORS.textSecondary} />
         </View>
+        <Text style={styles.emptyText}>{message.title}</Text>
+      </View>
+    );
+  };
 
-        {error && (
-          <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle" size={24} color={COLORS.error} />
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
-              <Ionicons name="refresh" size={16} color="#FFF" />
-              <Text style={styles.retryButtonText}>Reintentar</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+  return (
+    <SafeAreaView style={styles.container} edges={['top'] as Edge[]}>
+      <View style={styles.tabsContainer}>
+        {TABS.map(tab => (
+          <TouchableOpacity
+            key={tab.key}
+            style={[styles.tabButton, activeTab === tab.key && styles.tabButtonActive]}
+            onPress={() => setActiveTab(tab.key as 'pendientes' | 'leidas')}
+          >
+            <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
-        {loading && !refreshing && (
-          <View style={styles.loadingContainer}>
-            <Ionicons name="hourglass-outline" size={32} color={COLORS.primary} />
-            <Text style={styles.loadingText}>Cargando notificaciones...</Text>
-          </View>
-        )}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={24} color={COLORS.error} />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
+            <Ionicons name="refresh" size={16} color="#FFF" />
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-        <FlatList
-          data={notifications}
-          renderItem={renderNotification}
-          keyExtractor={(item) => item._id}
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={onRefresh}
-              colors={[COLORS.primary]}
-              tintColor={COLORS.primary}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconContainer}>
-                <Ionicons name="notifications-off" size={80} color={COLORS.textSecondary} />
-              </View>
-              <Text style={styles.emptyText}>No hay notificaciones</Text>
-              <Text style={styles.emptySubtext}>
-                Las notificaciones aparecerán aquí cuando tu tutor te llame
-              </Text>
-            </View>
-          }
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-        />
-      </SafeAreaView>
+      {loading && !refreshing && (
+        <View style={styles.loadingContainer}>
+          <Ionicons name="hourglass-outline" size={32} color={COLORS.primary} />
+          <Text style={styles.loadingText}>Cargando notificaciones...</Text>
+        </View>
+      )}
+
+      <FlatList
+        data={filteredNotifications}
+        renderItem={renderNotification}
+        keyExtractor={(item) => item._id}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
+        ListEmptyComponent={renderEmptyState}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+      />
+    </SafeAreaView>
   );
 };
 
@@ -233,42 +266,40 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    backgroundColor: COLORS.primary,
-    paddingTop: 30,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  headerContent: {
+  tabsContainer: {
     flexDirection: 'row',
+    backgroundColor: COLORS.primary,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.secondary,
+    marginBottom: 2,
+    paddingTop: 33,
+    elevation: 3,
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
     alignItems: 'center',
-    marginBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+    backgroundColor: 'transparent',
   },
-  title: {
-    fontSize: 28,
+  tabButtonActive: {
+    borderBottomColor: COLORS.secondary,
+    backgroundColor: COLORS.background,
+    elevation: 2,
+  },
+  tabLabel: {
+    color: COLORS.surface,
     fontWeight: 'bold',
-    color: COLORS.surface,
-    marginLeft: 12,
+    fontSize: 16,
+    letterSpacing: 0.5,
   },
-  headerSubtitle: {
-    marginLeft: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  subtitleText: {
-    fontSize: 14,
-    color: COLORS.surface,
-    fontStyle: 'italic',
+  tabLabelActive: {
+    color: COLORS.primary,
   },
   errorContainer: {
     backgroundColor: 'rgba(211, 47, 47, 0.1)',
@@ -453,6 +484,7 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: 'bold',
     marginBottom: 12,
+    textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 16,

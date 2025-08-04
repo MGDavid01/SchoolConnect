@@ -20,11 +20,12 @@ interface UserDetailsModalProps {
   visible: boolean;
   onClose: () => void;
   user?: User;
+  onLogoutPress?: () => void;
 }
 
 
 
-const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ visible, onClose, user }) => {
+const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ visible, onClose, user, onLogoutPress }) => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.9));
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
@@ -86,6 +87,21 @@ const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ visible, onClose, u
           >
             <Text style={{ color: "white", fontWeight: "600" }}>Cambiar contraseña</Text>
           </TouchableOpacity>
+
+          {onLogoutPress && (
+            <TouchableOpacity
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: 10,
+                backgroundColor: COLORS.error,
+                alignItems: "center",
+              }}
+              onPress={onLogoutPress}
+            >
+              <Text style={{ color: "white", fontWeight: "600" }}>Cerrar sesión</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Modal de cambio de contraseña */}
           <ChangePasswordModal

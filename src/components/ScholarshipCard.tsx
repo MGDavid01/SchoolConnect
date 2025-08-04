@@ -80,8 +80,14 @@ const ScholarshipCard: React.FC<ScholarshipCardProps> = ({
       </Card.Content>
       
       <View style={styles.footerSection}>
-        <Text style={styles.amount}>Monto: {scholarship.monto ? `$${scholarship.monto}` : '-'}</Text>
-        <Text style={styles.institution}>Institución: {scholarship.institucion ?? '-'}</Text>
+        {scholarship.tipo === "beca" ? (
+          <>
+            <Text style={styles.amount}>Monto: {scholarship.monto ? `$${scholarship.monto}` : '-'}</Text>
+            <Text style={styles.institution}>Institución: {scholarship.institucion ?? '-'}</Text>
+          </>
+        ) : (
+          <Text style={styles.institution}>Institución: {scholarship.institucion ?? '-'}</Text>
+        )}
       </View>
     </Card>
   )
@@ -121,7 +127,7 @@ const styles = StyleSheet.create({
   chip: {
     borderRadius: 16,
     height: 28,
-    minWidth: 60,
+    minWidth: 80,
     justifyContent: 'center',
     elevation: 2,
     shadowColor: '#000',
@@ -153,6 +159,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
+    flexWrap: "wrap",
   },
   amount: {
     fontSize: 14,
