@@ -11,6 +11,9 @@ export interface IUser extends Document {
   activo: boolean;
   fechaRegistro: Date;
   fechaNacimiento: Date;
+  bloqueadoHasta: Date | null;     // ✅ Permitir null
+  intentosFallidos: number;  
+  primerInicio: boolean; 
 }
 
 const usuarioSchema = new Schema<IUser>({
@@ -57,6 +60,18 @@ const usuarioSchema = new Schema<IUser>({
     type: Date,
     required: true,
   },
+  bloqueadoHasta: { 
+    type: Date, 
+    default: null 
+  },
+  intentosFallidos: { 
+    type: Number, 
+    default: 0 
+  },
+  primerInicio: { 
+    type: Boolean, 
+    default: true 
+  }
 },
   {
   versionKey: false,

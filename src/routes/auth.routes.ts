@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { UserModel } from "../models/User";
 import mongoose from "mongoose";
+import { InicioSesionModel } from "../models/inicioSesion";
 
 const router: Router = Router();
 
@@ -59,33 +60,75 @@ router.get("/test", (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
-  console.log("Entrando a /login");
   const { _id, password } = req.body;
-   console.log("Login request received:", { _id, password });
 
   try {
-     const user = await UserModel.findOne({ _id: _id.trim().toLowerCase() })
-                              .select('+password');
-    console.log("User found:", user);
-    console.log("Usuario encontrado:", user);
+    const user = await UserModel.findOne({ _id: _id.trim().toLowerCase() }).select('+password');
 
-    if (!user || !user.password) {
-      res.status(401).json({ message: "Credenciales inválidas" });
-      return;
+    if (!user) {
+      return res.status(401).json({ message: "Credenciales inválidas" });
     }
 
+    const ahora = new Date();
+
+    // 🔒 Revisar si está inactiva
+    if (!user.activo) {
+      return res.status(403).json({ message: "Cuenta inactiva. Contacta al administrador." });
+    }
+
+    // 🔒 Revisar si está bloqueado
+    if (user.bloqueadoHasta && user.bloqueadoHasta > ahora) {
+      const minutosRestantes = Math.ceil((user.bloqueadoHasta.getTime() - ahora.getTime()) / 60000);
+      return res.status(403).json({ 
+        message: `Cuenta bloqueada. Inténtalo en ${minutosRestantes} minuto(s).`,
+        bloqueado: true,
+        bloqueadoHasta: user.bloqueadoHasta,
+        intentosFallidos: user.intentosFallidos
+      });
+    }
+
+    // ✅ Reactivar si ya pasó el bloqueo
+    if (user.bloqueadoHasta && user.bloqueadoHasta <= ahora) {
+      user.bloqueadoHasta = null;
+      user.intentosFallidos = 0;
+    }
+
+    // ❌ Contraseña incorrecta
     if (user.password !== password) {
-      res.status(401).json({ message: "Contraseña incorrecta" });
-      return;
+      user.intentosFallidos = (user.intentosFallidos || 0) + 1;
+
+      // 🔐 Si pasa el límite, bloquear temporalmente
+      if (user.intentosFallidos >= 5) {
+        user.bloqueadoHasta = new Date(ahora.getTime() + 5 * 60 * 1000); // Bloquear 5 minutos
+        await user.save();
+        return res.status(403).json({ message: "Cuenta bloqueada por intentos fallidos." });
+      }
+
+      await user.save(); // Guardar intentosFallidos actualizados
+      return res.status(401).json({
+        message: "Contraseña incorrecta.",
+        bloqueadoHasta: user.bloqueadoHasta, 
+        intentosFallidos: user.intentosFallidos // 👈 Agrega esto
+      });
     }
 
-    const { password: _, ...userData } = user.toObject(); // Eliminar password
-    res.json(userData);
+    // ✅ Login exitoso
+    user.intentosFallidos = 0;
+    user.bloqueadoHasta = null;
+    await user.save();
+
+    const { password: _, ...userData } = user.toObject(); // Eliminar contraseña antes de responder
+    return res.json({
+      ...userData,
+      primerInicio: user.primerInicio || false, // 👈 Incluye esta línea
+    });
 
   } catch (err) {
     console.error("Error en /login:", err);
-    res.status(500).json({ message: "Error interno del servidor" });
+    return res.status(500).json({ message: "Error interno del servidor" });
   }
 });
+
+
 
 export default router;
