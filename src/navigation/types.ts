@@ -3,6 +3,9 @@ import { StackNavigationProp } from '@react-navigation/stack';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { CompositeScreenProps, RouteProp } from '@react-navigation/native';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+
 export type ScholarshipType =
   | "Académica"
   | "Deportiva"
@@ -53,13 +56,38 @@ export type RootStackParamList = {
   ScholarshipDetail: { scholarship: Scholarship };
   CreatePost: undefined;
   News: undefined;
-  NewsDetail: { post: PostData }; 
+  NewsDetail: { post: PostData };
   Auth: undefined;
-  MainTabs: undefined;
+  MainTabs: { screen?: keyof RootTabParamList }; 
+  Router: undefined;
+  AuthStack: undefined;
+  FirstLoginScreen: { user: any };
+  
+};
+export type RootTabParamList = {
+  Noticias: undefined;
+  Blog: undefined;
+  Becas: undefined;
+  Calendario: undefined;
+  Perfil: undefined;
+  RolesTab: undefined;
+};
+
+// Tipos para props de navegación
+export type MainTabsScreenProps = CompositeScreenProps<
+  BottomTabScreenProps<RootTabParamList>,
+  NativeStackScreenProps<RootStackParamList, 'MainTabs'>
+>;
+
+// Tipo para las props de MainTabs
+export type MainTabsProps = {
+  route: RouteProp<RootStackParamList, 'MainTabs'>;
+  navigation: MainTabsScreenProps['navigation'];
 };
 
 export type AuthStackParamList = {
   Login: undefined;
+  FirstLoginScreen: { user: any };
 };
 
 export type NewsStackParamList = {
