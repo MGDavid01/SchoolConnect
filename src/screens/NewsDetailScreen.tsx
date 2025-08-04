@@ -5,6 +5,7 @@ import {
   View,
   TouchableOpacity,
   Text,
+  Clipboard,
 } from "react-native";
 import {
   Card,
@@ -13,6 +14,7 @@ import {
 } from "react-native-paper";
 import { COLORS } from "../theme/theme";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import NotificationToast from '../components/NotificationToast';
 
 // Define el tipo de datos que esperas para "post"
 interface Post {
@@ -42,81 +44,137 @@ import { RouteProp } from '@react-navigation/native';
 const NewsDetailScreen: React.FC<NewsDetailScreenProps> = ({ route }) => {
   const { post } = route.params;
   const [isExpanded, setIsExpanded] = useState(false);
+  const [notification, setNotification] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'success' as 'success' | 'error' | 'info' | 'warning',
+  });
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
   };
 
+  const copyToClipboard = async (text: string, type: string) => {
+    try {
+      await Clipboard.setString(text);
+      setNotification({
+        visible: true,
+        title: '¡Copiado!',
+        message: `${type} copiado al portapapeles`,
+        type: 'success',
+      });
+    } catch (error) {
+      setNotification({
+        visible: true,
+        title: 'Error',
+        message: 'No se pudo copiar al portapapeles',
+        type: 'error',
+      });
+    }
+  };
+
+  const hideNotification = () => {
+    setNotification(prev => ({ ...prev, visible: false }));
+  };
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <Card style={styles.card}>
-        {post.imageUrl && (
-          <View style={styles.imageContainer}>
-            <Card.Cover source={{ uri: post.imageUrl }} />
-            <View style={styles.chipOverlay}>
-              <Chip 
-                style={styles.categoryChip}
-                textStyle={styles.categoryChipText}
+    <View style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <Card style={styles.card}>
+          {post.imageUrl && (
+            <View style={styles.imageContainer}>
+              <Card.Cover source={{ uri: post.imageUrl }} />
+              <View style={styles.chipOverlay}>
+                <Chip 
+                  style={styles.categoryChip}
+                  textStyle={styles.categoryChipText}
+                >
+                  {post.category}
+                </Chip>
+              </View>
+            </View>
+          )}
+          <Card.Content style={styles.cardContent}>
+            <View style={styles.header}>
+              <Title style={styles.title}>{post.title}</Title>
+            </View>
+
+            <View style={styles.metadata}>
+              <Text style={styles.date}>{post.date}</Text>
+            </View>
+
+            <View style={styles.contentContainer}>
+              <Text
+                style={styles.content}
+                numberOfLines={isExpanded ? undefined : 3}
+                ellipsizeMode="tail"
+                allowFontScaling={false}
               >
-                {post.category}
-              </Chip>
+                {post.content}
+              </Text>
+              {post.content.length > 150 && (
+                <TouchableOpacity onPress={toggleExpand} style={styles.expandButton}>
+                  <Text style={styles.expandText}>
+                    {isExpanded ? "Ver menos" : "Ver más"}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
-          </View>
-        )}
-        <Card.Content style={styles.cardContent}>
-          <View style={styles.header}>
-            <Title style={styles.title}>{post.title}</Title>
-          </View>
 
-          <View style={styles.metadata}>
-            <Text style={styles.date}>{post.date}</Text>
-          </View>
+            <View style={styles.infoSection}>
+              <Title style={styles.sectionTitle}>Contacto</Title>
 
-          <View style={styles.contentContainer}>
-            <Text
-              style={styles.content}
-              numberOfLines={isExpanded ? undefined : 3}
-              ellipsizeMode="tail"
-              allowFontScaling={false}
-            >
-              {post.content}
-            </Text>
-            {post.content.length > 150 && (
-              <TouchableOpacity onPress={toggleExpand} style={styles.expandButton}>
-                <Text style={styles.expandText}>
-                  {isExpanded ? "Ver menos" : "Ver más"}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.infoSection}>
-            <Title style={styles.sectionTitle}>Contacto</Title>
-
-            <View style={styles.contactInfo}>
-              <View style={styles.contactItem}>
-                <MaterialCommunityIcons 
-                  name="email-outline" 
-                  size={20} 
-                  color={COLORS.primary} 
-                  style={styles.contactIcon}
-                />
-                <Text style={styles.contactText}>contacto@utt.edu.mx</Text>
-              </View>
-              <View style={styles.contactItem}>
-                <MaterialCommunityIcons 
-                  name="phone-outline" 
-                  size={20} 
-                  color={COLORS.primary} 
-                  style={styles.contactIcon}
-                />
-                <Text style={styles.contactText}>+52 (664) 123-4567</Text>
+              <View style={styles.contactInfo}>
+                <TouchableOpacity 
+                  style={styles.contactItem}
+                  onPress={() => copyToClipboard('contacto@utt.edu.mx', 'Email')}
+                >
+                  <MaterialCommunityIcons 
+                    name="email-outline" 
+                    size={20} 
+                    color={COLORS.primary} 
+                    style={styles.contactIcon}
+                  />
+                  <Text style={styles.contactText}>contacto@utt.edu.mx</Text>
+                  <MaterialCommunityIcons 
+                    name="content-copy" 
+                    size={16} 
+                    color={COLORS.primary} 
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.contactItem}
+                  onPress={() => copyToClipboard('+52 (664) 123-4567', 'Teléfono')}
+                >
+                  <MaterialCommunityIcons 
+                    name="phone-outline" 
+                    size={20} 
+                    color={COLORS.primary} 
+                    style={styles.contactIcon}
+                  />
+                  <Text style={styles.contactText}>+52 (664) 123-4567</Text>
+                  <MaterialCommunityIcons 
+                    name="content-copy" 
+                    size={16} 
+                    color={COLORS.primary} 
+                  />
+                </TouchableOpacity>
               </View>
             </View>
-          </View>
-        </Card.Content>
-      </Card>
-    </ScrollView>
+          </Card.Content>
+        </Card>
+      </ScrollView>
+      
+      <NotificationToast
+        visible={notification.visible}
+        title={notification.title}
+        message={notification.message}
+        type={notification.type}
+        duration={1500}
+        onHide={hideNotification}
+      />
+    </View>
   );
 };
 
@@ -214,11 +272,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
     backgroundColor: COLORS.background,
     borderRadius: 8,
     marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    elevation: 2,
   },
   contactIcon: {
     marginRight: 8,
