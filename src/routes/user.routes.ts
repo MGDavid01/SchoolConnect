@@ -18,6 +18,7 @@ router.post("/change-password", async (req, res) => {
     }
 
     user.password = newPassword;
+    user.primerInicio = false;
     await user.save();
 
     return res.status(200).json({ message: "Contraseña actualizada con éxito" });
@@ -26,5 +27,25 @@ router.post("/change-password", async (req, res) => {
     return res.status(500).json({ message: "Error al cambiar la contraseña" });
   }
 });
+
+router.post("/mark-first-login-complete", async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    user.primerInicio = false;
+    await user.save();
+
+    return res.status(200).json({ message: "Primer inicio marcado como completado" });
+  } catch (error) {
+    console.error("Error al marcar primer inicio:", error);
+    return res.status(500).json({ message: "Error al actualizar el estado de primer inicio" });
+  }
+});
+
 
 export default router;

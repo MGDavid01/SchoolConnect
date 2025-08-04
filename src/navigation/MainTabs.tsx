@@ -2,6 +2,12 @@ import React, { useContext, useState } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator, NativeStackNavigationOptions } from "@react-navigation/native-stack";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { RouteProp, useRoute } from "@react-navigation/native";
+import { CompositeScreenProps } from "@react-navigation/native";
+import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+
+// Screens
 import NewsScreen from "../screens/NewsScreen";
 import NewsDetailScreen from "../screens/NewsDetailScreen";
 import BlogScreen from "../screens/BlogScreen";
@@ -10,21 +16,18 @@ import ScholarshipScreen from "../screens/ScholarshipScreen";
 import ScholarshipDetailScreen from "../screens/ScholarshipDetailScreen";
 import CalendarScreen from "../screens/CalendarScreen";
 import ProfileScreen from "../screens/ProfileScreen";
-import TabTransition from "../components/TabTransition";
-import { COLORS } from "../theme/theme";
-import { Scholarship } from '../navigation/types'; // Asegúrate de que la ruta sea correcta
-import { NewsStackParamList } from './types';
-import { ScholarshipStackParamList } from '../navigation/types';
 import EditPostScreen from "../screens/EditPostScreen";
 
-import RoleListScreen from "../screens/RoleListScreen";
-import RolesNavigator from "./RolesNavigator";
+// Components
+import TabTransition from "../components/TabTransition";
 
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+// Types and Context
+import { COLORS } from "../theme/theme";
+import { Scholarship } from '../navigation/types';
+import { BlogPost } from "../types/blog";
 import { AuthContext } from "../contexts/AuthContext";
 
-
-// Tipos para los parámetros de las rutas
+// Definición de tipos
 export type RootTabParamList = {
   Noticias: undefined;
   Blog: undefined;
@@ -34,20 +37,32 @@ export type RootTabParamList = {
   RolesTab: undefined;
 };
 
+export type NewsStackParamList = {
+  NewsList: undefined;
+  NewsDetail: { post: any }; // Ajusta este tipo según tu estructura de datos
+};
+
 export type BlogStackParamList = {
   BlogList: undefined;
   CreatePost: undefined;
   EditPost: {
     post: BlogPost;
-    onSave: (updatedPost: BlogPost) => void; // <-- AÑADIDO
+    onSave: (updatedPost: BlogPost) => void;
   };
 };
+
+export type ScholarshipStackParamList = {
+  ScholarshipList: undefined;
+  ScholarshipDetail: { scholarship: Scholarship };
+};
+
+
+
 
 export type CalendarStackParamList = {
   CalendarMain: undefined;
 };
 
-// Justo en la parte donde defines los tipos de navegación
 export type ProfileStackParamList = {
   ProfileMain: undefined;
   EditPost: {
@@ -56,16 +71,18 @@ export type ProfileStackParamList = {
   };
 };
 
+export type RootStackParamList = {
+  MainTabs: { screen?: keyof RootTabParamList };
+  // Otras rutas...
+};
 
-
-// Creación de los navegadores
+// Creación de navegadores
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const NewsStack = createNativeStackNavigator<NewsStackParamList>();
 const BlogStack = createNativeStackNavigator<BlogStackParamList>();
 const ScholarshipStack = createNativeStackNavigator<ScholarshipStackParamList>();
 const CalendarStack = createNativeStackNavigator<CalendarStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
-
 
 // Props para los componentes de navegación
 interface NavigatorProps {
@@ -78,20 +95,18 @@ const commonStackOptions: NativeStackNavigationOptions = {
   animationDuration: 200
 };
 
-
+// Componentes de navegación
 const NewsNavigator: React.FC<NavigatorProps> = ({ active }) => {
   return (
-            <TabTransition active={active}>
+    <TabTransition active={active}>
       <NewsStack.Navigator screenOptions={commonStackOptions}>
         <NewsStack.Screen name="NewsList" component={NewsScreen} />
-        <NewsStack.Screen
-          name="NewsDetail"
-          component={NewsDetailScreen as React.FC}
+        <NewsStack.Screen 
+          name="NewsDetail" 
+          component={NewsDetailScreen as React.ComponentType<any>}
           options={{
             headerShown: true,
-            headerStyle: {
-              backgroundColor: COLORS.primary
-            },
+            headerStyle: { backgroundColor: COLORS.primary },
             headerTintColor: COLORS.surface,
             title: "Detalle de Noticia"
           }}
@@ -100,9 +115,6 @@ const NewsNavigator: React.FC<NavigatorProps> = ({ active }) => {
     </TabTransition>
   );
 };
-
-import { BlogPost } from "../types/blog";
-
 
 const BlogNavigator: React.FC<NavigatorProps> = ({ active }) => {
   return (
@@ -115,9 +127,7 @@ const BlogNavigator: React.FC<NavigatorProps> = ({ active }) => {
           options={{
             headerShown: true,
             headerTitle: "Nueva Publicación",
-            headerStyle: {
-              backgroundColor: COLORS.primary
-            },
+            headerStyle: { backgroundColor: COLORS.primary },
             headerTintColor: COLORS.surface
           }}
         />
@@ -127,9 +137,7 @@ const BlogNavigator: React.FC<NavigatorProps> = ({ active }) => {
           options={{
             headerShown: true,
             headerTitle: "Editar Publicación",
-            headerStyle: {
-              backgroundColor: COLORS.primary
-            },
+            headerStyle: { backgroundColor: COLORS.primary },
             headerTintColor: COLORS.surface
           }}
         />
@@ -145,16 +153,13 @@ const ScholarshipNavigator: React.FC<NavigatorProps> = ({ active }) => {
         <ScholarshipStack.Screen
           name="ScholarshipList"
           component={ScholarshipScreen}
-          options={{ headerShown: false }} // Puedes cambiar esto si quieres mostrar el header
         />
         <ScholarshipStack.Screen
           name="ScholarshipDetail"
-          component={ScholarshipDetailScreen}
+          component={ScholarshipDetailScreen as React.ComponentType<any>}
           options={{
             headerShown: true,
-            headerStyle: {
-              backgroundColor: COLORS.primary
-            },
+            headerStyle: { backgroundColor: COLORS.primary },
             headerTintColor: COLORS.surface,
             title: "Detalles del Apoyo"
           }}
@@ -179,17 +184,13 @@ const ProfileNavigator: React.FC<NavigatorProps> = ({ active }) => {
     <TabTransition active={active}>
       <ProfileStack.Navigator screenOptions={commonStackOptions}>
         <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} />
-        
-        {/* Agregamos EditPost aquí para que funcione desde la pestaña Perfil */}
         <ProfileStack.Screen
           name="EditPost"
           component={EditPostScreen}
           options={{
             headerShown: true,
             headerTitle: "Editar Publicación",
-            headerStyle: {
-              backgroundColor: COLORS.primary,
-            },
+            headerStyle: { backgroundColor: COLORS.primary },
             headerTintColor: COLORS.surface,
           }}
         />
@@ -198,26 +199,27 @@ const ProfileNavigator: React.FC<NavigatorProps> = ({ active }) => {
   );
 };
 
+// Tipos para MainTabs
+type MainTabsProps = NativeStackScreenProps<RootStackParamList, 'MainTabs'>;
 
-const MainTabs: React.FC = () => {
+const MainTabs: React.FC<MainTabsProps> = ({ route }) => {
   const [activeTab, setActiveTab] = useState<keyof RootTabParamList>("Noticias");
-  const authContext = useContext(AuthContext);
+  const { user } = useContext(AuthContext) || {};
 
-if (!authContext) {
-  throw new Error("AuthContext no disponible. Asegúrate de envolver la app con <AuthProvider>");
-}
+  if (!user) {
+    throw new Error("Usuario no autenticado. Asegúrate de que el usuario esté logueado.");
+  }
 
-const { user } = authContext;
-  
+  const initialRoute = route.params?.screen || "Noticias";
+
   return (
     <Tab.Navigator
+      initialRouteName={initialRoute}
       screenOptions={{
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.secondary,
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: COLORS.surface
-        },
+        tabBarStyle: { backgroundColor: COLORS.surface },
         tabBarHideOnKeyboard: true
       }}
       screenListeners={{
@@ -232,25 +234,16 @@ const { user } = authContext;
     >
       <Tab.Screen
         name="Noticias"
-        children={(props) => (
-          <NewsNavigator {...props} active={activeTab === "Noticias"} />
-        )}
+        children={(props) => <NewsNavigator {...props} active={activeTab === "Noticias"} />}
         options={{
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons
-              name="newspaper"
-              size={size}
-              color={color}
-            />
+            <MaterialCommunityIcons name="newspaper" size={size} color={color} />
           )
         }}
       />
-
       <Tab.Screen
         name="Blog"
-        children={(props) => (
-          <BlogNavigator {...props} active={activeTab === "Blog"} />
-        )}
+        children={(props) => <BlogNavigator {...props} active={activeTab === "Blog"} />}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="post" size={size} color={color} />
@@ -259,9 +252,7 @@ const { user } = authContext;
       />
       <Tab.Screen
         name="Becas"
-        children={(props) => (
-          <ScholarshipNavigator {...props} active={activeTab === "Becas"} />
-        )}
+        children={(props) => <ScholarshipNavigator {...props} active={activeTab === "Becas"} />}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="school" size={size} color={color} />
@@ -270,9 +261,7 @@ const { user } = authContext;
       />
       <Tab.Screen
         name="Calendario"
-        children={(props) => (
-          <CalendarNavigator {...props} active={activeTab === "Calendario"} />
-        )}
+        children={(props) => <CalendarNavigator {...props} active={activeTab === "Calendario"} />}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="calendar" size={size} color={color} />
@@ -281,16 +270,13 @@ const { user } = authContext;
       />
       <Tab.Screen
         name="Perfil"
-        children={(props) => (
-          <ProfileNavigator {...props} active={activeTab === "Perfil"} />
-        )}
+        children={(props) => <ProfileNavigator {...props} active={activeTab === "Perfil"} />}
         options={{
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="account" size={size} color={color} />
           )
         }}
       />
-      
     </Tab.Navigator>
   );
 };

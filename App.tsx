@@ -1,10 +1,11 @@
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { Provider as PaperProvider } from "react-native-paper";
-import { AuthProvider, useAuth } from "./src/contexts/AuthContext"; // Importa useAuth correctamente
+import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 import { ActivityIndicator, View } from "react-native";
-import MainNavigator from "./src/navigation/MainNavigator";
-
+import { MainNavigator } from "./src/navigation/MainNavigator";
+import AuthStack from "./src/navigation/AuthStack";
+import FirstLoginScreen from "./src/screens/FirstLoginScreen";
 
 const App = () => {
   return (
@@ -19,7 +20,7 @@ const App = () => {
 };
 
 const AppContent = () => {
-  const { user, isLoading } = useAuth(); // Ahora está correctamente importado
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -27,6 +28,10 @@ const AppContent = () => {
         <ActivityIndicator size="large" color="#0000ff" />
       </View>
     );
+  }
+
+  if (!user) {
+    return <AuthStack />;
   }
 
   return <MainNavigator />;

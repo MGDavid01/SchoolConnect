@@ -28,15 +28,11 @@ import { NewsStackParamList } from '../navigation/types'; // ajusta la ruta si e
 
 
 // Define el tipo de props que recibe el componente (navigation y route vienen de React Navigation)
-interface NewsDetailScreenProps {
-  route: {
-    params: {
-      post: Post;
-      route: RouteProp<NewsStackParamList, 'NewsDetail'>;
-      navigation: any;
-    };
-  };
-}
+type NewsDetailScreenProps = {
+  route: RouteProp<NewsStackParamList, 'NewsDetail'>;
+  navigation?: any; // Opcional si no lo usas
+};
+
 import { RouteProp } from '@react-navigation/native';
 
 const NewsDetailScreen: React.FC<NewsDetailScreenProps> = ({ route }) => {

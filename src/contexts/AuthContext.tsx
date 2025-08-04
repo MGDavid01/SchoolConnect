@@ -5,6 +5,7 @@ import React, { createContext, useEffect, useState, ReactNode, useContext } from
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type UserType = {
+  
   _id: string;
   nombre: string;
   apellidoPaterno: string;
@@ -14,6 +15,7 @@ type UserType = {
   activo: boolean;
   fechaRegistro: Date; 
   fechaNacimiento: Date;
+  primerInicio: boolean;
 } | null;
 
 
