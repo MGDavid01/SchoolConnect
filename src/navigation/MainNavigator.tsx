@@ -7,12 +7,14 @@ import { NavigationContainer } from "@react-navigation/native";
 import FirstLoginScreen from "../screens/FirstLoginScreen";
 import { MainRouter } from "./MainRouter"
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import AppGuideScreen from "../screens/AppGuideScreen";
 
 export type RootStackParamList = {
   Router: undefined;
   AuthStack: undefined;
    MainTabs: { screen?: keyof RootTabParamList };
   FirstLoginScreen: { user: any }; 
+  AppGuide: undefined;
 };
 
 
@@ -26,6 +28,7 @@ export const MainNavigator = () => {
         <Stack.Screen name="AuthStack" component={AuthStack} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="FirstLoginScreen" component={FirstLoginScreen} />
+        <Stack.Screen name="AppGuide" component={AppGuideScreen} />
       </Stack.Navigator>
 
   );

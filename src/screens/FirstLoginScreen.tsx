@@ -54,12 +54,7 @@ const handlePasswordChange = async () => {
     setUser(updatedUser);
 
     // 4. Reiniciar completamente la navegación
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'MainTabs' }],
-      })
-    );
+    navigation.navigate('AppGuide');
 
   } catch (err) {
     console.error("Error al cambiar contraseña", err);
@@ -85,10 +80,7 @@ const handlePasswordChange = async () => {
       await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
       setUser(updatedUser);
 
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "MainTabs" }],
-      });
+      navigation.navigate('AppGuide');
 
     } catch (error) {
       console.error("Error al marcar primer inicio como completado", error);
