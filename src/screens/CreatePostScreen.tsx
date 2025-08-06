@@ -93,6 +93,7 @@ const CreatePostScreen = () => {
 
       const nuevaPublicacion = {
         contenido: contenido.trim(),
+        grupoID: user?.grupoID,
         tipo,
         visibilidad,
         imagenURL: imageUrl,

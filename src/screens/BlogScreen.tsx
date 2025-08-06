@@ -363,7 +363,6 @@ const handleAddComment = async () => {
     );
   };
 
-
   const handleExpandPost = (postId: string) => {
     setExpandedPostId(expandedPostId === postId ? null : postId);
   };

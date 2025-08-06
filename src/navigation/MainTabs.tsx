@@ -6,7 +6,7 @@ import { RouteProp, useRoute } from "@react-navigation/native";
 import { CompositeScreenProps } from "@react-navigation/native";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 // Screens
 import NewsScreen from "../screens/NewsScreen";
 import NewsDetailScreen from "../screens/NewsDetailScreen";
@@ -27,7 +27,7 @@ import { usePendingNotifications } from "../hooks/usePendingNotifications";
 // Components
 
 import { BlogPost } from "../types/blog";
-import { AuthContext } from "../contexts/AuthContext";
+import { AuthContext, useAuth } from "../contexts/AuthContext";
 
 // Definición de tipos
 export type RootTabParamList = {
@@ -236,11 +236,18 @@ const NotificationTabIcon: React.FC<{ color: string; size: number }> = ({ color,
 
 const MainTabs: React.FC<MainTabsProps> = ({ route }) => {
   const [activeTab, setActiveTab] = useState<keyof RootTabParamList>("Noticias");
-  const { user } = useContext(AuthContext) || {};
+  const { user, isLoading } = useAuth();
 
-  if (!user) {
-    throw new Error("Usuario no autenticado. Asegúrate de que el usuario esté logueado.");
+  if (isLoading || !user) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
   }
+
+  const rol = user.rol?.toLowerCase(); // Esto asegura que sea "alumno", "docente", etc.
+  console.log("ROL DETECTADO:", rol);
 
   const initialRoute = route.params?.screen || "Noticias";
 
@@ -282,36 +289,42 @@ const MainTabs: React.FC<MainTabsProps> = ({ route }) => {
           )
         }}
       />
-      <Tab.Screen
-        name="Becas"
-        children={(props) => <ScholarshipNavigator {...props} active={activeTab === "Becas"} />}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="school" size={size} color={color} />
-          )
-        }}
-      />
-      <Tab.Screen
-        name="Calendario"
-        children={(props) => <CalendarNavigator {...props} active={activeTab === "Calendario"} />}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="calendar" size={size} color={color} />
-          )
-        }}
-      />
-      <Tab.Screen
-        name="IoT"
-        children={(props) => (
-          <IoTNavigator {...props} active={activeTab === "IoT"} />
-        )}
-        options={{
-          tabBarIcon: ({ color, size }) => (
-            <NotificationTabIcon color={color} size={size} />
-          ),
-          tabBarLabel: "Notificaciones"
-        }}
-      />
+      {user.rol === "alumno" && (
+        <Tab.Screen
+          name="Becas"
+          children={(props) => <ScholarshipNavigator {...props} active={activeTab === "Becas"} />}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <MaterialCommunityIcons name="school" size={size} color={color} />
+            )
+          }}
+        />
+      )}
+      {user.rol === "alumno" && (
+        <Tab.Screen
+          name="Calendario"
+          children={(props) => <CalendarNavigator {...props} active={activeTab === "Calendario"} />}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <MaterialCommunityIcons name="calendar" size={size} color={color} />
+            )
+          }}
+        />
+      )}
+      {user.rol === "alumno" && (
+        <Tab.Screen
+          name="IoT"
+          children={(props) => (
+            <IoTNavigator {...props} active={activeTab === "IoT"} />
+          )}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <NotificationTabIcon color={color} size={size} />
+            ),
+            tabBarLabel: "Notificaciones"
+          }}
+        />
+      )}
       <Tab.Screen
         name="Perfil"
         children={(props) => <ProfileNavigator {...props} active={activeTab === "Perfil"} />}

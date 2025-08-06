@@ -1,10 +1,9 @@
-import React from "react"
-import { StyleSheet, View } from "react-native"
+import React, { useState } from "react"
+import { StyleSheet, View, TouchableOpacity } from "react-native"
 import { Card, Title, Paragraph, Chip, Text } from "react-native-paper"
 import { COLORS } from "../theme/theme"
 import { truncateForCard, truncateForTitle } from "../utils/textUtils"
 
-// 1. Definir el tipo de props
 type NewsCardProps = {
   title: string
   content: string
@@ -13,11 +12,8 @@ type NewsCardProps = {
   category: string
   imageUrl: string
   onViewMore: () => void
-  expanded?: boolean // <- necesario para evitar el error
-  onExpand?: () => void // <- necesario para evitar el error
 }
 
-// 2. Usar props tipadas y exportar como componente funcional
 const NewsCard: React.FC<NewsCardProps> = ({
   title,
   content,
@@ -27,29 +23,37 @@ const NewsCard: React.FC<NewsCardProps> = ({
   imageUrl,
   onViewMore
 }) => {
-  // Truncar el contenido para evitar desbordamiento
-  const truncatedContent = truncateForCard(content)
-  
+  const [expanded, setExpanded] = useState(false)
+
+  const toggleExpand = () => setExpanded(!expanded)
+
   return (
-    <Card style={styles.card} onPress={onViewMore} elevation={4}>
+    <Card style={styles.card} elevation={4}>
       <View style={styles.imageContainer}>
         <Card.Cover source={{ uri: imageUrl }} style={styles.cover} />
       </View>
-              <View style={styles.titleWrapper}>
-          <Title style={styles.title} numberOfLines={2} ellipsizeMode="tail">
-            {truncateForTitle(title)}
-          </Title>
-        </View>
+      <View style={styles.titleWrapper}>
+        <Title style={styles.title} numberOfLines={2} ellipsizeMode="tail">
+          {truncateForTitle(title)}
+        </Title>
+      </View>
       <View style={styles.contentWrapper}>
         <Card.Content style={styles.content}>
-          <Paragraph 
-            style={styles.preview} 
-            numberOfLines={3} 
+          <Paragraph
+            style={styles.preview}
+            numberOfLines={expanded ? undefined : 3}
             ellipsizeMode="tail"
             allowFontScaling={false}
           >
-            {truncatedContent}
+            {content}
           </Paragraph>
+
+          <TouchableOpacity onPress={toggleExpand}>
+            <Text style={styles.verMas}>
+              {expanded ? "Ver menos ▲" : "Ver más ▼"}
+            </Text>
+          </TouchableOpacity>
+
           <View style={styles.footer}>
             <Text style={styles.date}>{date}</Text>
             <Chip style={styles.chipFooter} textStyle={styles.chipTextFooter}>
@@ -153,4 +157,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
+  verMas: {
+  color: COLORS.primary,
+  fontWeight: 'bold',
+  textAlign: 'right',
+  marginBottom: 8,
+}
+
 })
