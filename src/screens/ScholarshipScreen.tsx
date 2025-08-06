@@ -17,6 +17,8 @@ import { RootStackParamList } from "../navigation/types"; // Asegúrate de tener
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import axios from 'axios';
 import { API_URL } from '../constants/api';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
 // Definición de tipos
 type ScholarshipType = "Académica" | "Deportiva" | "Cultural" | "Socioeconómica" | "Internacional";
 type EducationLevel = "TSU" | "Ingeniería" | "Posgrado";
@@ -69,8 +71,7 @@ const ScholarshipScreen: React.FC<ScholarshipScreenProps> = ({ navigation }) => 
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    const fetchScholarships = async () => {
+  const fetchScholarships = async () => {
       setLoading(true);
       try {
         const res = await axios.get(`${API_URL}/api/becas`);
@@ -81,8 +82,18 @@ const ScholarshipScreen: React.FC<ScholarshipScreenProps> = ({ navigation }) => 
         setLoading(false);
       }
     };
-    fetchScholarships();
+
+
+  useEffect(() => {
+    fetchScholarships(); 
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchScholarships(); 
+    }, [])
+  );
+
 
   const filteredScholarships = scholarships.filter(scholarship => {
     const matchesSearch =

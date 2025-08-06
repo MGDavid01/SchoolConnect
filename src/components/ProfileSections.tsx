@@ -77,6 +77,12 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({
         );
       }
 
+       if (activeSection === "guardados") {
+      // Caso especial para publicaciones guardadas
+        const savedRes = await axios.get(`${API_URL}/api/guardados/${user?._id}`);
+        publicaciones = savedRes.data; // Esto debería devolver las publicaciones completas
+      }
+
       if (activeSection === "likes") {
         const usuarioID = await AsyncStorage.getItem("correo");
         const reaccionesRes = await axios.get(
@@ -169,6 +175,17 @@ const ProfileSections: React.FC<ProfileSectionsProps> = ({
       setSavedPosts((prev) => [...prev, postId]);
       setPosts((prev) =>
         prev.map((p) => (p.id === postId ? { ...p, guardada: true } : p))
+      );
+    }
+
+     if (activeSection === "guardados") {
+      await fetchPosts();
+    } else {
+      // Actualización local para otras secciones
+      setPosts(prev =>
+        prev.map(p => 
+          p.id === postId ? { ...p, guardada: !yaGuardada } : p
+        )
       );
     }
   } catch (error) {
@@ -363,22 +380,27 @@ const confirmDeletePost = async () => {
 
   const [savedPostsData, setSavedPostsData] = useState<BlogPost[]>([]);
 
-useEffect(() => {
-  const fetchSavedPosts = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/api/guardados/${user?._id}`);
-      // El backend debería devolver un array con los objetos de publicación o sus IDs
-      const savedIDs = res.data.map((p: any) => p._id || p.id);
-      setSavedPosts(savedIDs);
-    } catch (error) {
-      console.error("Error al obtener publicaciones guardadas:", error);
-    }
-  };
+useFocusEffect(
+  useCallback(() => {
+    const fetchAll = async () => {
+      // Si estamos en "guardados", primero obtenemos las publicaciones guardadas
+      if (activeSection === "guardados") {
+        try {
+          const res = await axios.get(`${API_URL}/api/guardados/${user?._id}`);
+          const savedIDs = res.data.map((p: any) => p._id || p.id);
+          setSavedPosts(savedIDs);
+        } catch (error) {
+          console.error("Error al obtener publicaciones guardadas:", error);
+        }
+      }
 
-  if (user?._id) {
-    fetchSavedPosts();
-  }
-}, [user]);
+      // Luego cargamos las publicaciones filtradas (sean guardadas u otras)
+      await fetchPosts();
+    };
+
+    fetchAll();
+  }, [activeSection])
+);
 
 
   const sections: { key: SectionKey; label: string }[] = [
@@ -411,6 +433,10 @@ useEffect(() => {
       scaleAnim.setValue(0.9); // empieza un poco más grande para cuando se abra de nuevo
     }
   }, [deleteModalVisible]);
+
+  const handleExpandPost = (postId: string) => {
+    setExpandedPostId(expandedPostId === postId ? null : postId);
+  };
 
   return (
     <View style={styles.sectionsContainer}>
@@ -452,18 +478,22 @@ useEffect(() => {
             .map((post) => (
               <View key={post.id} style={{ marginBottom: 20 }}>
                 <BlogCard
-                  post={post}
-                  expanded={expandedPostId === post.id}
-                  userReaction={userReactions[post.id] || null}
-                  onExpand={(id) => setExpandedPostId((prev) => (prev === id ? null : id))}
-                  onReact={handleReaction}
-                  onComment={handleCommentPress}
-                  extraActions={post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`}
-                  isSaved={savedPosts.includes(post.id)}
-                  onToggleSave={toggleGuardar}
-                  onViewMore={() => {}}
-                  comentarioCount={conteoComentarios[post.id] || 0}
-                   />
+                post={post}
+                expanded={expandedPostId === post.id}
+                userReaction={userReactions[post.id]}
+                onExpand={handleExpandPost}
+                onReact={handleReaction}
+                onComment={handleCommentPress}
+                onViewMore={() => {
+                  // lógica que quieras para ver más
+                }}
+                comentarioCount={conteoComentarios[post.id] || 0}
+                onEdit={(post) => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
+                onDelete={handleEliminar}
+                isOwner={post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`}
+                isSaved={savedPosts.includes(post.id)}
+                onToggleSave={toggleGuardar}
+              />
                       </View>
                     ))}
      
@@ -489,21 +519,23 @@ useEffect(() => {
           <ScrollView>
             {posts.map((post) => (
               <View key={post.id} style={{ marginBottom: 20 }}>
-                <BlogCard
-                  post={post}
-                  expanded={expandedPostId === post.id}
-                  userReaction={userReactions[post.id] || null}
-                  onExpand={(id) =>
-                    setExpandedPostId((prev) => (prev === id ? null : id))
-                  }
-                  onReact={handleReaction}
-                  onComment={handleCommentPress}
-                  extraActions={post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`}
-                  onViewMore={() => {}}
-                  comentarioCount={conteoComentarios[post.id] || 0}
-                  isSaved={savedPosts.includes(post.id)}
-                  onToggleSave={toggleGuardar}
-                />
+               <BlogCard
+                post={post}
+                expanded={expandedPostId === post.id}
+                userReaction={userReactions[post.id]}
+                onExpand={handleExpandPost}
+                onReact={handleReaction}
+                onComment={handleCommentPress}
+                onViewMore={() => {
+                  // lógica que quieras para ver más
+                }}
+                comentarioCount={conteoComentarios[post.id] || 0}
+                onEdit={(post) => navigation.navigate("EditPost", { post, onSave: actualizarPost })}
+                onDelete={handleEliminar}
+                isOwner={post.author === `${user?.nombre} ${user?.apellidoPaterno} ${user?.apellidoMaterno}`}
+                isSaved={savedPosts.includes(post.id)}
+                onToggleSave={toggleGuardar}
+              />
               </View>
             ))}
           </ScrollView>

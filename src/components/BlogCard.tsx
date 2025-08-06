@@ -4,8 +4,10 @@ import { Card, Text, IconButton, Avatar, Menu, Divider } from "react-native-pape
 import { COLORS } from "../theme/theme";
 import { BlogPost } from "../types/blog";
 
+
 interface BlogCardProps {
   post: BlogPost;
+  
   expanded: boolean;
   userReaction: "like" | "dislike" | null;
   onExpand: (postId: string) => void;
@@ -20,6 +22,7 @@ interface BlogCardProps {
   onToggleSave?: (postId: string, isSaved: boolean) => void;
   extraActions?: boolean;
 }
+
 
 const BlogCard = ({
   post,
@@ -38,7 +41,6 @@ const BlogCard = ({
   const [menuVisible, setMenuVisible] = useState(false);
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const avatarLetter = post.author?.charAt(0).toUpperCase() || "?";
-
   const openMenu = () => setMenuVisible(true);
   const closeMenu = () => setMenuVisible(false);
 
@@ -59,6 +61,7 @@ const BlogCard = ({
   const closeImageModal = () => {
     setImageModalVisible(false);
   };
+
 
   return (
     <Card style={styles.card} elevation={4}>
@@ -121,13 +124,14 @@ const BlogCard = ({
         </Text>
 
         {/* Botón Ver más - se muestra si el texto tiene más de 4 líneas */}
-        {post.content.split('\n').length > 4 || post.content.length > 300 && (
+        {post.content.length > 150 && (
           <TouchableOpacity onPress={() => onExpand(post.id)} style={styles.expandBtn}>
             <Text style={styles.expandText}>
               {expanded ? "Ver menos" : "Ver más"}
             </Text>
           </TouchableOpacity>
         )}
+
       </Card.Content>
 
       {/* Imagen */}

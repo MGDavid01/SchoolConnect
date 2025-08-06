@@ -121,6 +121,14 @@ const NewsScreen: React.FC<NewsScreenProps> = ({ navigation }) => {
     fetchNoticias()
   }, [])
 
+  useEffect(() => {
+  const interval = setInterval(() => {
+    fetchNoticias(true)
+  }, 60000)
+
+  return () => clearInterval(interval)
+}, [])
+
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDateFilter, setSelectedDateFilter] = useState<DateFilter>("newest")
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<Category | "Todas">("Todas")
