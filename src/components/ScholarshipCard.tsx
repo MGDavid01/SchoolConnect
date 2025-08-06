@@ -39,8 +39,18 @@ const ScholarshipCard: React.FC<ScholarshipCardProps> = ({
     return diffDays
   }
 
+  const daysUntilStart = () => {
+    const start = new Date(scholarship.fechaInicio)
+    const today = new Date()
+    const diffTime = start.getTime() - today.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
   const deadlineDays = daysUntilDeadline()
-  const isUrgent = deadlineDays <= 7 && deadlineDays > 0
+  const startDays = daysUntilStart()
+  const isNotStarted = startDays > 0
+  const isUrgent = deadlineDays <= 7 && deadlineDays > 0 && !isNotStarted
   const isExpired = deadlineDays <= 0
 
   // Utilidad para capitalizar la primera letra
@@ -63,6 +73,8 @@ const ScholarshipCard: React.FC<ScholarshipCardProps> = ({
               {
                 backgroundColor: isExpired
                   ? COLORS.error
+                  : isNotStarted
+                  ? "#FF9800"
                   : isUrgent
                   ? "#FFA000"
                   : "#4CAF50"
@@ -70,7 +82,10 @@ const ScholarshipCard: React.FC<ScholarshipCardProps> = ({
             ]}
             textStyle={styles.chipText}
           >
-            {isExpired ? "Expirada" : isUrgent ? `¡${deadlineDays} días!` : `${deadlineDays} días`}
+            {isExpired ? "Expirada" : 
+             isNotStarted ? `Inicia en ${startDays} días` : 
+             isUrgent ? `¡${deadlineDays} días!` : 
+             `${deadlineDays} días`}
           </Chip>
         </View>
         

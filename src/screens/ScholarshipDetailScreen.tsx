@@ -154,8 +154,21 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  /**
+   * Calcula los días hasta el inicio de la beca
+   * @returns Número de días hasta el inicio (negativo si ya comenzó)
+   */
+  const daysUntilStart = (): number => {
+    const start = new Date(scholarship.fechaInicio);
+    const today = new Date();
+    const diffTime = start.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
   const deadlineDays = daysUntilDeadline();
-  const isUrgent = deadlineDays <= 7 && deadlineDays > 0;
+  const startDays = daysUntilStart();
+  const isNotStarted = startDays > 0;
+  const isUrgent = deadlineDays <= 7 && deadlineDays > 0 && !isNotStarted;
   const isExpired = deadlineDays <= 0;
 
   // Utilidad para capitalizar la primera letra
@@ -211,8 +224,17 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Estado:</Text>
-              <Text style={[styles.value, isExpired ? styles.expired : isUrgent ? styles.urgent : styles.active]}>
-                {isExpired ? 'Expirada' : isUrgent ? `${deadlineDays} días restantes` : `${deadlineDays} días restantes`}
+              <Text style={[
+                styles.value, 
+                isExpired ? styles.expired : 
+                isNotStarted ? styles.notStarted : 
+                isUrgent ? styles.urgent : 
+                styles.active
+              ]}>
+                {isExpired ? 'Expirada' : 
+                 isNotStarted ? `Inicia en ${startDays} días` : 
+                 isUrgent ? `${deadlineDays} días restantes` : 
+                 `${deadlineDays} días restantes`}
               </Text>
             </View>
             {scholarship.condicionEspecial && (
@@ -295,12 +317,14 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
           <Button
             mode="contained"
             onPress={handleApply}
-            style={[styles.applyButton, isExpired && styles.expiredButton]}
+            style={[styles.applyButton, (isExpired || isNotStarted) && styles.expiredButton]}
             labelStyle={styles.buttonLabel}
-            disabled={isExpired || !scholarship.url}
-            accessibilityLabel={isExpired ? "Convocatoria cerrada" : "Aplicar a la beca"}
+            disabled={isExpired || isNotStarted || !scholarship.url}
+            accessibilityLabel={isExpired ? "Convocatoria cerrada" : isNotStarted ? "Convocatoria no iniciada" : "Aplicar a la beca"}
           >
-            {isExpired ? "Convocatoria cerrada" : scholarship.url ? "Aplicar ahora" : "Sin URL de aplicación"}
+            {isExpired ? "Convocatoria cerrada" : 
+             isNotStarted ? "Convocatoria no iniciada" : 
+             scholarship.url ? "Aplicar ahora" : "Sin URL de aplicación"}
           </Button>
         </Card.Actions>
       </Card>
@@ -393,6 +417,10 @@ const styles = StyleSheet.create({
   },
   active: {
     color: COLORS.primary,
+    fontWeight: 'bold',
+  },
+  notStarted: {
+    color: '#FF9800',
     fontWeight: 'bold',
   },
   descriptionSection: {
