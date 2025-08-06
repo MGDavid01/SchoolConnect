@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, TouchableOpacity, StyleSheet, Image, Modal } from "react-native";
+import React, { useState, useRef, useEffect } from "react";
+import { View, TouchableOpacity, StyleSheet, Image, Modal, LayoutChangeEvent } from "react-native";
 import { Card, Text, IconButton, Avatar, Menu, Divider } from "react-native-paper";
 import { COLORS } from "../theme/theme";
 import { BlogPost } from "../types/blog";
@@ -37,6 +37,10 @@ const BlogCard = ({
 }: BlogCardProps) => {
   const [menuVisible, setMenuVisible] = useState(false);
   const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [textTruncated, setTextTruncated] = useState(false);
+  const [showFullText, setShowFullText] = useState(false);
+  const [textHeight, setTextHeight] = useState(0);
+  const textRef = useRef<any>(null);
   const avatarLetter = post.author?.charAt(0).toUpperCase() || "?";
 
   const openMenu = () => setMenuVisible(true);
@@ -59,6 +63,33 @@ const BlogCard = ({
   const closeImageModal = () => {
     setImageModalVisible(false);
   };
+
+  const handleTextLayout = (event: LayoutChangeEvent) => {
+    const { height } = event.nativeEvent.layout;
+    setTextHeight(height);
+    
+    // Calcular la altura aproximada de 2 líneas de texto
+    // Usando una altura más precisa basada en el tamaño de fuente y line-height
+    const fontSize = 15; // tamaño de fuente del texto
+    const lineHeight = 22; // line-height del texto (definido en styles)
+    const maxHeight = lineHeight * 2; // altura máxima para 2 líneas
+    
+    // Si la altura del texto es mayor que 2 líneas, mostrar "Ver más"
+    // También verificar que el texto tenga suficiente contenido para justificar el truncado
+    const needsTruncation = height > maxHeight && post.content.length > 50;
+    
+    setTextTruncated(needsTruncation);
+  };
+
+  const toggleTextExpansion = () => {
+    setShowFullText(!showFullText);
+  };
+
+  // Resetear el estado cuando cambia el contenido del post
+  useEffect(() => {
+    setShowFullText(false);
+    setTextTruncated(false);
+  }, [post.content]);
 
   return (
     <Card style={styles.card} elevation={4}>
@@ -115,16 +146,29 @@ const BlogCard = ({
 
       {/* Contenido */}
       <Card.Content style={styles.content}>
-
-        <Text style={styles.contentText} numberOfLines={expanded ? undefined : 4}>
+        <Text 
+          ref={textRef}
+          style={styles.contentText} 
+          numberOfLines={showFullText ? undefined : 2}
+          onLayout={handleTextLayout}
+        >
           {post.content}
         </Text>
 
-        {/* Botón Ver más - se muestra si el texto tiene más de 4 líneas */}
-        {post.content.split('\n').length > 4 || post.content.length > 300 && (
-          <TouchableOpacity onPress={() => onExpand(post.id)} style={styles.expandBtn}>
+        {/* Botón Ver más - se muestra si el texto está truncado */}
+        {textTruncated && !showFullText && (
+          <TouchableOpacity onPress={toggleTextExpansion} style={styles.expandBtn}>
             <Text style={styles.expandText}>
-              {expanded ? "Ver menos" : "Ver más"}
+              Ver más
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Botón Ver menos - se muestra cuando el texto está expandido */}
+        {showFullText && (
+          <TouchableOpacity onPress={toggleTextExpansion} style={styles.expandBtn}>
+            <Text style={styles.expandText}>
+              Ver menos
             </Text>
           </TouchableOpacity>
         )}
@@ -191,6 +235,19 @@ const BlogCard = ({
             />
             <Text style={styles.actionCount}>{comentarioCount}</Text>
           </TouchableOpacity>
+
+          {onToggleSave && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => onToggleSave(post.id, isSaved || false)}
+            >
+              <IconButton
+                icon={isSaved ? "bookmark" : "bookmark-outline"}
+                size={20}
+                iconColor={isSaved ? COLORS.primary : COLORS.textSecondary}
+              />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -223,18 +280,6 @@ const BlogCard = ({
               resizeMode="contain"
             />
           </TouchableOpacity>
-          {onToggleSave && (
-            <TouchableOpacity
-              style={styles.reactionBtn}
-              onPress={() => onToggleSave(post.id, isSaved || false)}
-            >
-              <IconButton
-                icon={isSaved ? "bookmark" : "bookmark-outline"}
-                size={22}
-                iconColor={isSaved ? COLORS.primary : COLORS.textSecondary}
-              />
-            </TouchableOpacity>
-          )}
         </View>
       </Modal>
     </Card>
@@ -316,8 +361,10 @@ const styles = StyleSheet.create({
     textAlign: "justify",
   },
   expandBtn: {
-    marginTop: 8,
+    marginTop: 2,
     alignSelf: "flex-start",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   expandText: {
     color: COLORS.primary,
@@ -412,3 +459,4 @@ const styles = StyleSheet.create({
 });
 
 export default BlogCard;
+

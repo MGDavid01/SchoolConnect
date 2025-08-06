@@ -11,6 +11,7 @@ import {
   Clipboard,
   ViewStyle,
   TextStyle,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView, Edge } from 'react-native-safe-area-context';
 import { useIoTNotifications } from '../hooks/useIoTNotifications';
@@ -208,7 +209,7 @@ const IoTNotificationsScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top'] as Edge[]}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.tabsContainer}>
         {TABS.map(tab => (
           <TouchableOpacity
@@ -222,41 +223,46 @@ const IoTNotificationsScreen: React.FC = () => {
           </TouchableOpacity>
         ))}
       </View>
+      
+      <ScrollView style={styles.scrollView}>
+        {error && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={24} color={COLORS.error} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
+              <Ionicons name="refresh" size={16} color="#FFF" />
+              <Text style={styles.retryButtonText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-      {error && (
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={24} color={COLORS.error} />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
-            <Ionicons name="refresh" size={16} color="#FFF" />
-            <Text style={styles.retryButtonText}>Reintentar</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        {loading && !refreshing && (
+          <View style={styles.loadingContainer}>
+            <Ionicons name="hourglass-outline" size={32} color={COLORS.primary} />
+            <Text style={styles.loadingText}>Cargando notificaciones...</Text>
+          </View>
+        )}
 
-      {loading && !refreshing && (
-        <View style={styles.loadingContainer}>
-          <Ionicons name="hourglass-outline" size={32} color={COLORS.primary} />
-          <Text style={styles.loadingText}>Cargando notificaciones...</Text>
-        </View>
-      )}
-
-      <FlatList
-        data={filteredNotifications}
-        renderItem={renderNotification}
-        keyExtractor={(item) => item._id}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={onRefresh}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
+        {!loading && !error && (
+          <FlatList
+            data={filteredNotifications}
+            renderItem={renderNotification}
+            keyExtractor={(item) => item._id}
+            refreshControl={
+              <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={onRefresh}
+                colors={[COLORS.primary]}
+                tintColor={COLORS.primary}
+              />
+            }
+            ListEmptyComponent={renderEmptyState}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={false}
           />
-        }
-        ListEmptyComponent={renderEmptyState}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-      />
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -266,13 +272,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  scrollView: {
+    flex: 1,
+  },
   tabsContainer: {
     flexDirection: 'row',
     backgroundColor: COLORS.primary,
     borderBottomWidth: 2,
     borderBottomColor: COLORS.secondary,
     marginBottom: 2,
-    paddingTop: 33,
     elevation: 3,
     shadowColor: COLORS.secondary,
     shadowOffset: { width: 0, height: 2 },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ScrollView, StyleSheet, View, Share, Linking } from "react-native";
+import { ScrollView, StyleSheet, View, Share, Linking, ActivityIndicator } from "react-native";
 import {
   Card,
   Title,
@@ -13,6 +13,7 @@ import { COLORS } from "../theme/theme";
 import { RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../navigation/types"; // Asegúrate de tener definido tu tipo de navegación
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import axios from 'axios';
 import { API_URL } from '../constants/api';
@@ -72,8 +73,42 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
     fetchScholarship();
   }, [id]);
 
-  if (loading) return <Text style={{ margin: 20 }}>Cargando...</Text>;
-  if (!scholarship) return <Text style={{ margin: 20 }}>No se encontró la beca o programa.</Text>;
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <View style={styles.loadingContent}>
+          <MaterialCommunityIcons 
+            name="school" 
+            size={80} 
+            color={COLORS.primary} 
+            style={styles.loadingIcon}
+          />
+          <ActivityIndicator 
+            size="large" 
+            color={COLORS.primary} 
+            style={styles.spinner}
+          />
+          <Text style={styles.loadingTitle}>Cargando beca</Text>
+          <Text style={styles.loadingSubtitle}>Obteniendo información detallada...</Text>
+        </View>
+      </View>
+    );
+  }
+  
+  if (!scholarship) {
+    return (
+      <View style={styles.errorContainer}>
+        <MaterialCommunityIcons 
+          name="alert-circle-outline" 
+          size={80} 
+          color={COLORS.error} 
+          style={styles.errorIcon}
+        />
+        <Text style={styles.errorTitle}>No se encontró la beca</Text>
+        <Text style={styles.errorSubtitle}>La beca o programa solicitado no está disponible o ha sido removido.</Text>
+      </View>
+    );
+  }
 
   /**
    * Comparte los detalles de la beca
@@ -160,7 +195,7 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Nivel educativo:</Text>
-              <Text style={styles.value}>{scholarship.condicionEspecial}</Text>
+              <Text style={styles.value}>{scholarship.condicionEspecial ? `${scholarship.condicionEspecial}`: '-'}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Monto:</Text>
@@ -405,6 +440,64 @@ const styles = StyleSheet.create({
     color: COLORS.surface,
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  // Estilos para la pantalla de carga
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingIcon: {
+    marginBottom: 20,
+    opacity: 0.8,
+  },
+  spinner: {
+    marginVertical: 20,
+  },
+  loadingTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  loadingSubtitle: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  // Estilos para la pantalla de error
+  errorContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorIcon: {
+    marginBottom: 20,
+    opacity: 0.8,
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.error,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  errorSubtitle: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 300,
   },
 });
 

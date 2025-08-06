@@ -66,6 +66,10 @@ export type CalendarStackParamList = {
   CalendarMain: undefined;
 };
 
+export type IoTStackParamList = {
+  IoTMain: undefined;
+};
+
 export type ProfileStackParamList = {
   ProfileMain: undefined;
   EditPost: {
@@ -85,6 +89,7 @@ const NewsStack = createNativeStackNavigator<NewsStackParamList>();
 const BlogStack = createNativeStackNavigator<BlogStackParamList>();
 const ScholarshipStack = createNativeStackNavigator<ScholarshipStackParamList>();
 const CalendarStack = createNativeStackNavigator<CalendarStackParamList>();
+const IoTStack = createNativeStackNavigator<IoTStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 
 // Props para los componentes de navegación
@@ -179,7 +184,9 @@ const CalendarNavigator: React.FC<NavigatorProps> = ({ active }) => {
 const IoTNavigator: React.FC<NavigatorProps> = ({ active }) => {
   return (
     <TabTransition active={active}>
-      <IoTNotificationsScreen />
+      <IoTStack.Navigator screenOptions={commonStackOptions}>
+        <IoTStack.Screen name="IoTMain" component={IoTNotificationsScreen} />
+      </IoTStack.Navigator>
     </TabTransition>
   );
 };

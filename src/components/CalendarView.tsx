@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, Dimensions, ScrollView } from "react-native";
-import { Calendar } from "react-native-calendars";
+import { Calendar, LocaleConfig } from "react-native-calendars";
 import { Button } from "react-native-paper";
 import moment from "moment";
 import { COLORS } from "../theme/theme";
@@ -10,6 +10,24 @@ import { API_URL } from "../constants/api";
 import { CalendarioEscolar, CalendarioEvento } from "../models/CalendarioEscolar";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+// Configuración del idioma español para el calendario
+LocaleConfig.locales['es'] = {
+  monthNames: [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ],
+  monthNamesShort: [
+    'Ene.', 'Feb.', 'Mar.', 'Abr.', 'May.', 'Jun.',
+    'Jul.', 'Ago.', 'Sep.', 'Oct.', 'Nov.', 'Dic.'
+  ],
+  dayNames: [
+    'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'
+  ],
+  dayNamesShort: ['Dom.', 'Lun.', 'Mar.', 'Mié.', 'Jue.', 'Vie.', 'Sáb.']
+};
+
+LocaleConfig.defaultLocale = 'es';
 
 interface MarkedDates {
   [date: string]: {
@@ -350,7 +368,7 @@ const CalendarView: React.FC = () => {
       {/* Línea de tiempo de eventos */}
       <View style={styles.timelineContainer}>
         <Text style={styles.timelineTitle}>
-          Línea de Tiempo ({markedDates ? Object.keys(markedDates).length : 0} eventos)
+          Línea de Tiempo
         </Text>
         {markedDates && Object.keys(markedDates).length > 0 ? (
           generateTimelineItems()

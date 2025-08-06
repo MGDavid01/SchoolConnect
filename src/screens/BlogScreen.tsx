@@ -509,8 +509,9 @@ const handleAddComment = async () => {
       </KeyboardAvoidingView>
 
       <FAB
-        icon="plus"
+        icon={{ source: "plus", direction: "auto" }}
         style={styles.fab}
+        color="white"
         onPress={() => {
           navigation.navigate("CreatePost");
         }}

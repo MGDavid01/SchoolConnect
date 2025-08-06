@@ -6,15 +6,15 @@ import CalendarView from '../components/CalendarView';
 import { COLORS } from '../theme/theme';
 
 const TABS = [
-  { key: 'calendario', label: 'Calendario' },
   { key: 'horario', label: 'Horario' },
+  { key: 'calendario', label: 'Calendario' },
 ];
 
 const CalendarScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'calendario' | 'horario'>('horario');
 
   return (
-    <SafeAreaView style={styles.container} edges={['top'] as Edge[]}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.tabsContainer}>
         {TABS.map(tab => (
           <TouchableOpacity
@@ -26,6 +26,7 @@ const CalendarScreen: React.FC = () => {
           </TouchableOpacity>
         ))}
       </View>
+      
       <ScrollView style={styles.scrollView}>
         {activeTab === 'horario' ? <HorarioView /> : <CalendarView />}
       </ScrollView>

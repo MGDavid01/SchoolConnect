@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   titleSection: {
     backgroundColor: COLORS.primary,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 6,
   },
   content: {
     paddingHorizontal: 16,
@@ -126,8 +126,6 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderRadius: 16,
-    height: 28,
-    minWidth: 80,
     justifyContent: 'center',
     elevation: 2,
     shadowColor: '#000',
@@ -139,8 +137,8 @@ const styles = StyleSheet.create({
     color: COLORS.surface,
     fontSize: 12,
     fontWeight: "bold",
-    paddingHorizontal: 8,
-    textAlign: 'center',
+    paddingHorizontal: 2,
+    alignItems: 'center',
   },
   title: {
     fontSize: 18,
@@ -149,7 +147,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   description: {
-    fontSize:16,
+    fontSize: 16,
     color: COLORS.text,
     textAlign: 'justify',
   },

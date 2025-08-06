@@ -415,27 +415,33 @@ useEffect(() => {
   return (
     <View style={styles.sectionsContainer}>
       {/* Tabs */}
-      <View style={styles.sectionTabs}>
-        {sections.map((section) => (
-          <TouchableOpacity
-            key={section.key}
-            style={[
-              styles.sectionTab,
-              activeSection === section.key && styles.activeSectionTab,
-            ]}
-            onPress={() => onSectionChange(section.key)}
-          >
-            <Text
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.sectionTabsContainer}
+      >
+        <View style={styles.sectionTabs}>
+          {sections.map((section) => (
+            <TouchableOpacity
+              key={section.key}
               style={[
-                styles.sectionTabText,
-                activeSection === section.key && styles.activeSectionTabText,
+                styles.sectionTab,
+                activeSection === section.key && styles.activeSectionTab,
               ]}
+              onPress={() => onSectionChange(section.key)}
             >
-              {section.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+              <Text
+                style={[
+                  styles.sectionTabText,
+                  activeSection === section.key && styles.activeSectionTabText,
+                ]}
+              >
+                {section.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
 
       {/* Contenido */}
       <View style={styles.sectionContent}>
@@ -616,11 +622,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.surface,
   },
+  sectionTabsContainer: {
+    paddingHorizontal: 20,
+  },
   sectionTabs: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: COLORS.background,
-    paddingHorizontal: 20,
     paddingBottom: 10,
     backgroundColor: COLORS.surface,
   },
