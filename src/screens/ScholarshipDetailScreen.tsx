@@ -190,31 +190,37 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
 
           <View style={styles.infoSection}>
             <View style={styles.infoRow}>
-              <Text style={styles.label}>Tipo de beca:</Text>
+              <Text style={styles.label}>Tipo:</Text>
               <Text style={styles.value}>{capitalize(scholarship.tipo)}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Nivel educativo:</Text>
-              <Text style={styles.value}>{scholarship.condicionEspecial ? `${scholarship.condicionEspecial}`: '-'}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Monto:</Text>
-              <Text style={styles.value}>{scholarship.monto ? `$${scholarship.monto}` : '-'}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Institución:</Text>
-              <Text style={styles.value}>{scholarship.institucion ?? '-'}</Text>
-            </View>
+            {scholarship.monto && (
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Monto:</Text>
+                <Text style={[styles.value, styles.amount]}>${scholarship.monto}</Text>
+              </View>
+            )}
+            {scholarship.institucion && (
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Institución:</Text>
+                <Text style={styles.value}>{scholarship.institucion}</Text>
+              </View>
+            )}
             <View style={styles.infoRow}>
               <Text style={styles.label}>Fecha límite:</Text>
               <Text style={styles.value}>{formatFecha(scholarship.fechaFin)}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Estado:</Text>
-              <Text style={[styles.value, isExpired ? styles.expired : styles.urgent]}>
-                {isExpired ? 'Expirada' : `${deadlineDays} días restantes`}
+              <Text style={[styles.value, isExpired ? styles.expired : isUrgent ? styles.urgent : styles.active]}>
+                {isExpired ? 'Expirada' : isUrgent ? `${deadlineDays} días restantes` : `${deadlineDays} días restantes`}
               </Text>
             </View>
+            {scholarship.condicionEspecial && (
+              <View style={styles.infoRow}>
+                <Text style={styles.label}>Condición especial:</Text>
+                <Text style={styles.value}>{scholarship.condicionEspecial}</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.descriptionSection}>
@@ -235,6 +241,7 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
                     left={props => <List.Icon {...props} icon="check-circle" color={COLORS.primary} />}
                     titleStyle={styles.requirementText}
                     style={styles.listItem}
+                    titleNumberOfLines={0}
                     accessibilityLabel={`Requisito ${index + 1}: ${requirement}`}
                   />
                 ))
@@ -243,6 +250,25 @@ const ScholarshipDetailScreen: React.FC<ScholarshipDetailScreenProps> = ({ route
               )}
             </List.Section>
           </View>
+
+          {scholarship.documentos && scholarship.documentos.length > 0 && (
+            <View style={styles.documentsSection}>
+              <Title style={styles.sectionTitle}>Documentos Requeridos</Title>
+              <List.Section>
+                {scholarship.documentos.map((document, index) => (
+                  <List.Item
+                    key={`document-${index}`}
+                    title={document}
+                    left={props => <List.Icon {...props} icon="file-document" color={COLORS.secondary} />}
+                    titleStyle={styles.documentText}
+                    style={styles.listItem}
+                    titleNumberOfLines={0}
+                    accessibilityLabel={`Documento ${index + 1}: ${document}`}
+                  />
+                ))}
+              </List.Section>
+            </View>
+          )}
 
           <View style={styles.contactSection}>
             <Title style={styles.sectionTitle}>Contacto</Title>
@@ -365,6 +391,10 @@ const styles = StyleSheet.create({
     color: '#E65100',
     fontWeight: 'bold',
   },
+  active: {
+    color: COLORS.primary,
+    fontWeight: 'bold',
+  },
   descriptionSection: {
     marginTop: 24,
     paddingHorizontal: 16,
@@ -392,6 +422,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.text,
     lineHeight: 20,
+    flexWrap: 'wrap',
+    flex: 1,
+  },
+  documentsSection: {
+    marginTop: 20,
+    paddingHorizontal: 16,
+  },
+  documentText: {
+    fontSize: 14,
+    color: COLORS.text,
+    lineHeight: 20,
+    flexWrap: 'wrap',
+    flex: 1,
   },
   noRequirements: {
     fontSize: 14,
@@ -411,6 +454,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f8f8',
     borderRadius: 8,
     paddingLeft: 12,
+    minHeight: 48,
   },
   actions: {
     padding: 16,
