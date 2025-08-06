@@ -32,7 +32,7 @@ export const usePendingNotifications = () => {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/iot-notifications/student/${user._id}`,
+        `${API_URL}/api/iot-notifications/student/${user._id}?unreadOnly=true`,
         {
           method: 'GET',
           headers: {
@@ -43,15 +43,10 @@ export const usePendingNotifications = () => {
 
       if (response.ok) {
         const data = await response.json();
-        const allNotifications = data.data || [];
+        const notifications = data.data || [];
         
-        // Filtrar notificaciones pendientes (no leídas o no respondidas)
-        const pending = allNotifications.filter((notif: PendingNotification) => 
-          !notif.leido || !notif.respondido
-        );
-        
-        setPendingNotifications(pending);
-        setPendingCount(pending.length);
+        setPendingNotifications(notifications);
+        setPendingCount(data.count || notifications.length);
       } else {
         setPendingNotifications([]);
         setPendingCount(0);
@@ -71,7 +66,7 @@ export const usePendingNotifications = () => {
 
     try {
       const response = await fetch(
-        `${API_URL}/api/iot-notifications/student/${user._id}`,
+        `${API_URL}/api/iot-notifications/student/${user._id}?unreadOnly=true`,
         {
           method: 'GET',
           headers: {
@@ -82,14 +77,10 @@ export const usePendingNotifications = () => {
 
       if (response.ok) {
         const data = await response.json();
-        const allNotifications = data.data || [];
+        const notifications = data.data || [];
         
-        const pending = allNotifications.filter((notif: PendingNotification) => 
-          !notif.leido || !notif.respondido
-        );
-        
-        setPendingNotifications(pending);
-        setPendingCount(pending.length);
+        setPendingNotifications(notifications);
+        setPendingCount(data.count || notifications.length);
       }
     } catch (error) {
       console.error('Error en actualización silenciosa de pendientes:', error);

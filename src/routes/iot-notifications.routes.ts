@@ -23,10 +23,16 @@ router.get("/student/:estudianteID", async (req, res) => {
       .limit(Number(limit))
       .lean();
 
+    // Si se solicita solo no leídas, contar solo esas
+    let count = notifications.length;
+    if (unreadOnly === 'true') {
+      count = notifications.filter(n => !n.leido).length;
+    }
+
     res.json({
       success: true,
       data: notifications,
-      count: notifications.length
+      count: count
     });
 
   } catch (error) {
